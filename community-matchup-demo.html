@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>社群资源对接平台 v2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:#07C160;--primary-dark:#06AD56;--primary-light:#E8F8EE;--danger:#FA5151;--bg:#F5F5F5;--bg-white:#FFFFFF;--text:#191919;--text-secondary:#888888;--text-light:#B0B0B0;--border:#E5E5E5;--radius:12px;--radius-sm:8px;--shadow:0 2px 12px rgba(0,0,0,.08);--font-size:15px;--font-size-sm:13px;--font-size-lg:18px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:var(--font-size);color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;max-width:480px;margin:0 auto;min-height:100vh;position:relative}
+.header{background:var(--bg-white);padding:12px 16px;text-align:center;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.header h1{font-size:var(--font-size-lg);font-weight:600}
+.page{display:none;padding:16px 16px 80px}
+.page.active{display:block}
+.tab-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--bg-white);border-top:1px solid var(--border);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom,0)}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:6px 0;color:var(--text-secondary);cursor:pointer;font-size:10px}
+.tab-item.active{color:var(--primary)}
+.tab-item .icon{font-size:18px;margin-bottom:1px}
+.card{background:var(--bg-white);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card-title{font-weight:600}
+.card-action{font-size:var(--font-size-sm);color:var(--primary);cursor:pointer}
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stat-item{background:var(--bg-white);border-radius:var(--radius);padding:14px 10px;text-align:center;box-shadow:var(--shadow)}
+.stat-value{font-size:24px;font-weight:700;color:var(--primary)}
+.stat-label{font-size:12px;color:var(--text-secondary);margin-top:4px}
+.tag{display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;margin:2px}
+.tag-primary{background:var(--primary-light);color:var(--primary-dark)}
+.tag-secondary{background:#F0F0F0;color:var(--text-secondary)}
+.member-item{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.member-item:last-child{border-bottom:none}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;margin-right:12px;flex-shrink:0}
+.member-info{flex:1;min-width:0}
+.member-name{font-weight:500;font-size:14px}
+.member-company{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.resource-type{display:inline-block;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:500}
+.type-offer{background:#E8F8EE;color:var(--primary-dark)}
+.type-need{background:#FFF3E0;color:#E65100}
+.search-bar{display:flex;gap:8px;margin-bottom:12px}
+.search-bar .form-input{flex:1}
+.filter-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;-webkit-overflow-scrolling:touch;flex-wrap:wrap}
+.filter-tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border);font-size:var(--font-size-sm);white-space:nowrap;cursor:pointer;background:var(--bg-white)}
+.filter-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-light)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.empty-state p{font-size:var(--font-size-sm)}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.modal-sheet{background:var(--bg-white);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;padding:20px 16px 32px;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.modal-title{font-size:var(--font-size-lg);font-weight:600}
+.modal-close{font-size:24px;color:var(--text-light);cursor:pointer;background:none;border:none;padding:4px}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:12px 24px;border-radius:8px;font-size:var(--font-size-sm);z-index:300;animation:fadeInOut 2s ease}
+@keyframes fadeInOut{0%,100%{opacity:0}20%,80%{opacity:1}}
+.chat-container{display:flex;flex-direction:column;height:calc(100vh - 160px)}
+.chat-messages{flex:1;overflow-y:auto;padding:8px 0;display:flex;flex-direction:column;gap:12px}
+.chat-msg{max-width:85%;padding:10px 14px;border-radius:16px;font-size:var(--font-size-sm);line-height:1.5;word-break:break-word}
+.chat-msg.bot{align-self:flex-start;background:var(--primary-light);color:var(--text);border-bottom-left-radius:4px}
+.chat-msg.user{align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.typing{align-self:flex-start;color:var(--text-light);font-size:12px;padding:8px 14px}
+.chat-input-area{display:flex;gap:8px;padding:12px 0 0;border-top:1px solid var(--border);margin-top:8px}
+.chat-input-area .form-input{flex:1;padding:10px 16px;font-size:var(--font-size-sm);border:1px solid var(--border);border-radius:20px}
+.chat-input-area .btn{border-radius:50%;width:40px;height:40px;padding:0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.chat-done{text-align:center;padding:12px;color:var(--text-light);font-size:12px}
+.fab{position:fixed;bottom:90px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 16px rgba(7,193,96,.4);cursor:pointer;z-index:150;transition:transform .2s}
+.fab:active{transform:scale(.9)}
+.fab-badge{position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:var(--danger);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center}
+.btn{display:inline-block;padding:8px 20px;border-radius:6px;border:none;font-size:var(--font-size-sm);cursor:pointer;text-align:center;white-space:nowrap}
+.btn:active{opacity:.8}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-outline{background:#fff;color:var(--primary);border:1px solid var(--primary)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-block{display:block;width:100%}
+.btn-ghost{background:transparent;color:var(--text-secondary)}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:var(--font-size-sm);font-weight:500;margin-bottom:6px}.form-label.required::after{content:" *";color:var(--danger)}
+.form-input,.form-textarea,.form-select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:var(--font-size);font-family:inherit;background:var(--bg-white);color:var(--text);-webkit-appearance:none}
+.form-input:focus,.form-textarea:focus{border-color:var(--primary);outline:none}
+.form-textarea{min-height:80px;resize:vertical}
+.form-hint{font-size:12px;color:var(--text-light);margin-top:4px}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .6s linear infinite;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.examples-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+.example-card{padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;text-align:center}
+.example-card .icon{font-size:28px;margin-bottom:4px}
+.group-select{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:var(--primary-light);border-radius:var(--radius-sm)}
+.group-select select{flex:1;border:none;background:transparent;font-size:var(--font-size-sm);color:var(--text)}
+.request-card{padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px}
+/* === 新功能样式 === */
+.notif-item,.conv-item{padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer;display:flex;gap:10px;align-items:flex-start}
+.notif-item.unread{background:var(--primary-light);margin:0 -12px;padding:14px 12px;border-radius:var(--radius-sm)}
+.notif-dot{width:8px;height:8px;border-radius:50%;background:var(--danger);flex-shrink:0;margin-top:6px}
+.notif-body{flex:1;min-width:0}.notif-title{font-size:14px;font-weight:500}.notif-content{font-size:12px;color:var(--text-secondary);margin-top:2px}.notif-time{font-size:11px;color:var(--text-light);margin-top:4px}
+.conv-avatar{width:44px;height:44px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px;flex-shrink:0}
+.conv-body{flex:1;min-width:0}.conv-name{font-weight:500;font-size:14px}.conv-preview{font-size:12px;color:var(--text-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-badge{background:var(--danger);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;flex-shrink:0}
+.bookmark-card{padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;display:flex;align-items:center;gap:8px;cursor:pointer}
+.bookmark-card .bookmark-info{flex:1;min-width:0}
+.announcement-card,.event-card{padding:14px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;cursor:pointer}
+.announcement-card.pinned{background:var(--primary-light);border-color:var(--primary)}
+.event-card .event-date{font-size:12px;color:var(--primary);font-weight:500}
+.event-meta{display:flex;gap:12px;font-size:12px;color:var(--text-secondary);margin-top:4px}
+.dashboard-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.dash-stat{background:var(--bg-white);border-radius:var(--radius);padding:16px 12px;box-shadow:var(--shadow)}
+.dash-stat .dash-value{font-size:22px;font-weight:700;color:var(--primary)}.dash-stat .dash-label{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.dash-chart-container{background:var(--bg-white);border-radius:var(--radius);padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.dash-chart-title{font-size:13px;font-weight:600;margin-bottom:10px}
+.bar-chart{display:flex;align-items:flex-end;gap:4px;height:100px;padding-top:4px}
+.bar-item{flex:1;display:flex;flex-direction:column;align-items:center;min-width:0}
+.bar-fill{width:100%;background:var(--primary);border-radius:4px 4px 0 0;min-height:2px;transition:height .3s}
+.bar-label{font-size:9px;color:var(--text-light);margin-top:4px;white-space:nowrap}
+.bar-value{font-size:9px;color:var(--text-secondary);margin-bottom:2px}
+.tag-cloud{display:flex;flex-wrap:wrap;gap:6px}.tag-cloud .tag-item{font-size:12px;padding:4px 10px;background:var(--primary-light);color:var(--primary-dark);border-radius:12px}
+.msg-bubble{max-width:80%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;word-break:break-word;margin-bottom:8px}
+.msg-bubble.sent{align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:4px;margin-left:auto}
+.msg-bubble.received{align-self:flex-start;background:#F0F0F0;color:var(--text);border-bottom-left-radius:4px}
+.msg-input-row{display:flex;gap:8px;padding:12px 0}.msg-input-row input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:20px;font-size:14px}.msg-input-row button{border-radius:50%;width:40px;height:40px;padding:0;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.badge-dot{position:absolute;top:-2px;right:-6px;width:16px;height:16px;border-radius:50%;background:var(--danger);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center}
+.section-title{font-size:15px;font-weight:600;margin-bottom:12px}
+.admin-tabs{display:flex;gap:8px;margin-bottom:16px}.admin-tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border);font-size:13px;cursor:pointer}.admin-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+</style>
+<script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
+<script>
+(function(){
+  try{
+    var beacon=new BeaconAction({
+      appkey:'0WEB06U85YBSLJNL',
+      versionCode:'1.0.0',
+      channelID:'share',
+      delay:1000,
+      sessionDuration:30*60*1000,
+      isOversea:false,
+      needReportRqdEvent:false
+    });
+    beacon.onDirectUserAction('preview_page_view',{
+      'url':location.href,
+      'referrer':document.referrer,
+      'title':document.title,
+      'sandbox_id':'f1442a0d563f4d31b671cf8db331e202'
+    });
+  }catch(e){}
+})();
+</script></head>
+<body>
+
+<!-- Header -->
+<div class="header" id="pageHeader" style="display:none"><h1 id="headerTitle">社群资源对接平台</h1><span id="headerGroup" style="display:none;font-size:12px;color:var(--primary);cursor:pointer;padding:4px 8px;border-radius:4px;background:var(--primary-light);white-space:nowrap;margin-left:8px;position:relative" onclick="toggleGroupDropdown()">切换群组 ▾</span><div id="headerGroupDropdown" style="display:none;position:absolute;top:100%;right:0;background:var(--bg-white);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow);z-index:200;min-width:180px;padding:8px 0;margin-top:4px"></div></div>
+
+<!-- ===== DISCOVERY ===== -->
+<div class="page active" id="page-discovery">
+  <div class="search-bar"><input class="form-input" id="discoverySearch" placeholder="搜索群组名称/分类..." oninput="loadDiscovery()"></div>
+  <div style="text-align:center;padding:8px 0"><div style="font-size:36px;margin-bottom:4px">🌐</div><div style="font-size:var(--font-size-lg);font-weight:600">发现群组</div><div style="font-size:12px;color:var(--text-secondary)">创建或加入一个社群，开始资源对接</div></div>
+  <button class="btn btn-primary btn-block" onclick="startCreateGroup()" style="margin-bottom:16px">➕ 创建新群组</button>
+  <div class="filter-tabs" id="discoveryCategoryFilters"></div>
+  <div id="discoveryList"></div><div id="discoveryEmpty" class="empty-state" style="display:none"><div class="icon">📭</div><p>暂无可发现的公开群组</p></div>
+</div>
+
+<!-- ===== POOL ===== -->
+<div class="page" id="page-pool">
+  <div id="poolNoGroup" style="display:none">
+    <div class="empty-state" style="padding:60px 20px"><div class="icon">👋</div><p style="font-weight:600;font-size:var(--font-size)">你还没有加入任何群组</p><p style="font-size:var(--font-size-sm);color:var(--text-secondary);margin-bottom:20px">加入或创建一个社群后，可以在这里浏览和对接资源</p><button class="btn btn-primary" onclick="switchTab('discovery')">🔍 去发现群组</button></div>
+  </div>
+  <div id="poolContent" style="display:none">
+    <div class="search-bar"><input class="form-input" id="poolSearch" placeholder="搜索资源/需求..." oninput="loadPool()"></div>
+    <div class="filter-tabs" id="poolTypeFilters"><span class="filter-tab active" data-type="all" onclick="filterPool('all',this)">全部</span><span class="filter-tab" data-type="offer" onclick="filterPool('offer',this)">可提供</span><span class="filter-tab" data-type="need" onclick="filterPool('need',this)">需求中</span></div>
+    <div class="filter-tabs" id="poolCategoryFilters"></div>
+    <div id="poolList"></div><div id="poolEmpty" class="empty-state" style="display:none"><div class="icon">📭</div><p>暂无可展示的资源</p></div>
+  </div>
+</div>
+
+<!-- ===== CHAT ===== -->
+<div class="page" id="page-chat">
+  <div class="chat-container"><div class="chat-messages" id="chatMessages"></div><div class="chat-input-area"><input class="form-input" id="chatInput" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendChatMessage()"><button class="btn btn-primary" onclick="sendChatMessage()">↑</button></div></div>
+</div>
+
+<!-- ===== PROFILE ===== -->
+<div class="page" id="page-profile">
+  <div class="card" style="text-align:center;padding:20px" id="profileLoginCard">
+    <div style="font-size:40px;margin-bottom:8px">💚</div>
+    <div style="font-weight:600;font-size:var(--font-size);margin-bottom:4px" id="profileNameDisplay">微信账号登录</div>
+    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px" id="profileLoginHint">登录后可同步你在各群组的信息</div>
+    <button class="btn btn-primary btn-block" id="profileLoginBtn" onclick="handleProfileLogin()" style="padding:12px">💚 微信账号登录</button>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">我的群组</span></div>
+    <div style="margin-bottom:12px"><div style="font-weight:500;font-size:13px;margin-bottom:6px">👑 我管理的</div><div id="managedGroupsList"><p style="font-size:12px;color:var(--text-light)">暂无</p></div></div>
+    <div><div style="font-weight:500;font-size:13px;margin-bottom:6px">👤 我加入的</div><div id="joinedGroupsList"><p style="font-size:12px;color:var(--text-light)">暂无</p></div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">⭐ 我的收藏</span><span class="card-action" onclick="switchTab('bookmarks')">查看全部 →</span></div>
+  </div>
+</div>
+
+<!-- ===== BOOKMARKS ===== -->
+<div class="page" id="page-bookmarks">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><button class="btn btn-sm btn-ghost" onclick="switchTab('profile')">← 返回</button><span style="font-weight:600">⭐ 我的收藏</span></div>
+  <div class="filter-tabs" id="bookmarkTypeFilters"><span class="filter-tab active" data-type="all" onclick="filterBookmarks('all',this)">全部</span><span class="filter-tab" data-type="resource" onclick="filterBookmarks('resource',this)">资源</span><span class="filter-tab" data-type="member" onclick="filterBookmarks('member',this)">成员</span></div>
+  <div id="bookmarkList"></div><div id="bookmarkEmpty" class="empty-state" style="display:none"><div class="icon">⭐</div><p>暂无收藏</p></div>
+</div>
+
+<!-- ===== GROUP MANAGEMENT ===== -->
+<div class="page" id="page-manage">
+  <div class="admin-tabs" id="manageTabs">
+    <span class="admin-tab active" onclick="switchManageTab('info',this)">📋 群信息</span>
+    <span class="admin-tab" onclick="switchManageTab('announcements',this)">📢 公告</span>
+    <span class="admin-tab" onclick="switchManageTab('events',this)">📅 活动</span>
+    <span class="admin-tab" onclick="switchManageTab('dashboard',this)">📊 看板</span>
+  </div>
+  <div id="manageTabInfo">
+    <div class="card"><div class="card-header"><span class="card-title">群组信息</span></div>
+      <div class="form-group"><label class="form-label">群名称</label><input class="form-input" id="mgName"></div>
+      <div class="form-group"><label class="form-label">群简介</label><textarea class="form-textarea" id="mgDesc" rows="2"></textarea></div>
+      <div class="form-group"><label class="form-label">分类</label><input class="form-input" id="mgCat"></div>
+      <div class="form-group"><label class="form-label">微信群入群二维码</label><div style="display:flex;gap:8px;align-items:center"><input type="file" id="mgQRFile" accept="image/*" style="display:none" onchange="uploadQRCode()"><button class="btn btn-outline btn-sm" onclick="document.getElementById('mgQRFile').click()" style="flex-shrink:0">📷 选择图片</button><span id="mgQRStatus" style="font-size:12px;color:var(--text-secondary);flex:1">未上传</span></div><input type="hidden" id="mgQR"><div id="mgQRPreview" style="margin-top:8px;display:none"><img id="mgQRImg" style="max-width:200px;border-radius:8px;border:1px solid var(--border)"></div><div class="form-hint">截图微信群二维码 → 点「选择图片」上传。新成员通过审核后可扫码入群。</div></div>
+      <button class="btn btn-primary btn-block btn-sm" onclick="saveManageInfo()">保存</button>
+    </div>
+    <div class="card"><div class="card-header"><span class="card-title">📎 邀请链接</span></div><div id="mgInviteLink"><p style="font-size:12px;color:var(--text-light)">加载中...</p></div></div>
+    <div class="card"><div class="card-header"><span class="card-title">📩 入群申请</span></div><div id="mgRequests"><p style="font-size:12px;color:var(--text-light)">暂无待审核</p></div></div>
+    <div class="card"><div class="card-header"><span class="card-title">👥 成员管理</span></div><div id="mgMembers"></div></div>
+  </div>
+  <div id="manageTabAnnouncements" style="display:none">
+    <div style="margin-bottom:12px"><button class="btn btn-primary btn-sm btn-block" onclick="showCreateAnnouncement()">📢 发布公告</button></div>
+    <div id="mgAnnouncements"></div>
+  </div>
+  <div id="manageTabEvents" style="display:none">
+    <div style="margin-bottom:12px"><button class="btn btn-primary btn-sm btn-block" onclick="showCreateEvent()">📅 创建活动</button></div>
+    <div id="mgEvents"></div>
+  </div>
+  <div id="manageTabDashboard" style="display:none"><div id="mgDashboard"></div></div>
+  <button class="btn btn-ghost btn-block" onclick="switchTab('profile')" style="margin-top:12px">← 返回</button>
+</div>
+
+<!-- ===== NOTIFICATIONS (merged into messages tab) ===== -->
+<div class="page" id="page-notifications" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-weight:600">🔔 通知中心</div><button class="btn btn-sm btn-ghost" onclick="markAllNotifsRead()" id="markAllBtn" style="display:none">全部已读</button></div>
+  <div id="notifList"></div><div id="notifEmpty" class="empty-state" style="display:none"><div class="icon">🔔</div><p>暂无通知</p></div>
+</div>
+
+<!-- ===== MESSAGES (通知+私信合并) ===== -->
+<div class="page" id="page-messages">
+  <div class="filter-tabs" style="margin-bottom:12px" id="msgSubTabs">
+    <span class="filter-tab active" data-subtab="notifications" onclick="switchMsgSubTab('notifications',this)">🔔 通知</span>
+    <span class="filter-tab" data-subtab="conversations" onclick="switchMsgSubTab('conversations',this)">💬 私信</span>
+  </div>
+  <div id="msgNotificationsContent">
+    <div id="notifList2"></div><div id="notifEmpty2" class="empty-state" style="display:none"><div class="icon">🔔</div><p>暂无通知</p></div>
+  </div>
+  <div id="msgConversationsContent" style="display:none">
+    <div id="messagesConvView2">
+      <div id="convList2"></div><div id="convEmpty2" class="empty-state" style="display:none"><div class="icon">💬</div><p>暂无私信</p><p style="font-size:12px;color:var(--text-secondary)">在资源池点击成员头像，可以发私信哦</p></div>
+    </div>
+    <div id="messagesChatView2" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><button class="btn btn-sm btn-ghost" onclick="closeChatView()">← 返回</button><span style="font-weight:600" id="chatPartnerName2"></span></div>
+      <div class="chat-container" style="height:calc(100vh - 280px)"><div id="dmMessages2" style="flex:1;overflow-y:auto;padding:8px 0;display:flex;flex-direction:column"></div><div class="msg-input-row"><input id="dmInput2" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendDM()"><button class="btn btn-primary" onclick="sendDM()">↑</button></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Tab Bar ===== -->
+<div class="tab-bar" id="tabBar" style="display:none">
+  <div class="tab-item" data-tab="discovery" onclick="switchTab('discovery')"><span class="icon">🔍</span><span>发现</span></div>
+  <div class="tab-item" data-tab="chat" onclick="switchTab('chat')"><span class="icon">🤖</span><span>AI助理</span></div>
+  <div class="tab-item" data-tab="pool" onclick="switchTab('pool')"><span class="icon">📦</span><span>资源池</span></div>
+  <div class="tab-item" data-tab="messages" onclick="switchTab('messages')" style="position:relative"><span class="icon">💬</span><span>消息</span><span class="badge-dot" id="notifBadge" style="display:none">0</span></div>
+  <div class="tab-item" data-tab="profile" onclick="switchTab('profile')"><span class="icon">👤</span><span>我的</span></div>
+</div>
+
+<!-- ===== Floating Chat Button ===== -->
+<div class="fab" id="fabButton" onclick="openFABChat()"><span>🤖</span></div>
+
+<!-- ===== Modals ===== -->
+<div class="modal-overlay" id="groupCreatorModal" style="display:none">
+  <div class="modal-sheet">
+    <div class="modal-header"><span class="modal-title">创建新群组</span><button class="modal-close" onclick="document.getElementById('groupCreatorModal').style.display='none'">✕</button></div>
+    <div class="form-group"><label class="form-label required">群组名称</label><input class="form-input" id="gcName" placeholder="例如：出海品牌社群"></div>
+    <div class="form-group"><label class="form-label">群简介</label><textarea class="form-textarea" id="gcDesc" rows="2" placeholder="一句话介绍这个群"></textarea></div>
+    <div class="form-group"><label class="form-label required">分类</label><select class="form-select" id="gcCatSelect" onchange="onGroupCatChange()"><option value="">-- 选择分类 --</option></select>
+    <div id="gcCatCustomWrap" style="display:none;margin-top:8px"><input class="form-input" id="gcCat" placeholder="输入自定义分类..." oninput="onGroupCatInput()"><div class="form-hint">输入新的自定义分类名称</div>
+    <div id="gcCatSuggestion" style="margin-top:8px;display:none;padding:10px;background:#FFF9E6;border-radius:8px;border:1px solid #FFD666"><div style="font-size:12px;color:#8B6914;margin-bottom:6px">已存在相似标签，是否使用？</div><div id="gcCatSuggestionText" style="font-weight:500;margin-bottom:8px"></div><div style="display:flex;gap:8px"><button class="btn btn-sm btn-primary" onclick="useSuggestedCategory()">✓ 使用</button><button class="btn btn-sm btn-ghost" onclick="ignoreSuggestion()">✕ 忽略</button></div></div></div></div>
+    <div class="form-group"><label class="form-label required">可见性</label><select class="form-select" id="gcVis"><option value="public">公开</option><option value="private">私有</option></select></div>
+    <div class="form-group"><label class="form-label">入群方式</label><select class="form-select" id="gcApproval" onchange="onApprovalChange()"><option value="1">需要审批</option><option value="0">通过链接加入免审批</option></select><div class="form-hint">选择"免审批"时，任何人通过邀请链接即可直接加入</div></div>
+    <button class="btn btn-primary btn-block" onclick="createGroup()">确认创建</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="joinRequestModal" style="display:none">
+  <div class="modal-sheet">
+    <div class="modal-header"><span class="modal-title">申请加入群组</span><button class="modal-close" onclick="document.getElementById('joinRequestModal').style.display='none'">✕</button></div>
+    <p style="font-size:var(--font-size-sm);color:var(--text-secondary);margin-bottom:12px">向管理员介绍你自己</p>
+    <div class="form-group"><label class="form-label">姓名 *</label><input class="form-input" id="jrName"></div>
+    <div class="form-group"><label class="form-label">自我介绍</label><textarea class="form-textarea" id="jrIntro" rows="3" placeholder="介绍一下你的背景..."></textarea></div>
+    <button class="btn btn-primary btn-block" onclick="submitJoinRequest()">提交申请</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="resourceModal" style="display:none"><div class="modal-sheet" id="resourceModalContent"></div></div>
+
+<div class="modal-overlay" id="announcementModal" style="display:none">
+  <div class="modal-sheet">
+    <div class="modal-header"><span class="modal-title" id="amTitle">发布公告</span><button class="modal-close" onclick="document.getElementById('announcementModal').style.display='none'">✕</button></div>
+    <div class="form-group"><label class="form-label">标题 *</label><input class="form-input" id="amName"></div>
+    <div class="form-group"><label class="form-label">内容</label><textarea class="form-textarea" id="amContent" rows="4"></textarea></div>
+    <div class="form-group"><label><input type="checkbox" id="amPinned"> 置顶</label></div>
+    <button class="btn btn-primary btn-block" onclick="createAnnouncement()">发布</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="eventModal" style="display:none">
+  <div class="modal-sheet">
+    <div class="modal-header"><span class="modal-title" id="evTitle">创建活动</span><button class="modal-close" onclick="document.getElementById('eventModal').style.display='none'">✕</button></div>
+    <div class="form-group"><label class="form-label">活动名称 *</label><input class="form-input" id="evName"></div>
+    <div class="form-group"><label class="form-label">活动描述</label><textarea class="form-textarea" id="evDesc" rows="3"></textarea></div>
+    <div class="form-group"><label class="form-label">地点</label><input class="form-input" id="evLocation"></div>
+    <div class="form-group"><label class="form-label">时间</label><input class="form-input" type="datetime-local" id="evDate"></div>
+    <div class="form-group"><label class="form-label">人数上限（0=不限）</label><input class="form-input" type="number" id="evMax" value="0" min="0"></div>
+    <button class="btn btn-primary btn-block" onclick="createEvent()">创建</button>
+  </div>
+</div>
+
+<!-- ===== 微信授权登录弹窗 ===== -->
+<div class="modal-overlay" id="wechatAuthModal" style="display:none">
+  <div class="modal-sheet" style="text-align:center">
+    <div style="font-size:56px;margin-bottom:16px">💚</div>
+    <div class="modal-title" style="margin-bottom:12px;font-size:18px">微信授权登录</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:24px;line-height:1.6">授权后可使用微信账号同步你在各群组的信息<br>让你的资源和需求一目了然</p>
+    <button class="btn btn-primary btn-block" onclick="doWechatAuth()" style="padding:14px;font-size:16px;border-radius:24px">💚 微信一键授权登录</button>
+    <p style="font-size:11px;color:var(--text-light);margin-top:14px">你的信息仅用于群组内匹配，不会公开</p>
+  </div>
+</div>
+
+<script>
+// ===== LOCAL DATABASE (replaces SQLite + FastAPI) =====
+const CONFIG={community_name:'社群资源对接平台',community_subtitle:'AI驱动的资源精准匹配',onboarding_step_0:'嗨！欢迎加入{group_name}～我是你的AI小助手 🌟 怎么称呼你呀？',onboarding_step_1:'你好{name}！可以简单介绍一下你自己吗？比如你是做什么的、在哪个行业～',onboarding_step_2:'了解了～那你加入{group_name}，最想认识什么样的人或者获得什么资源呢？',onboarding_step_3:'太棒了！那反过来，你可以给群里的大家带来什么呀？经验、资源、信息分享都可以～',onboarding_step_4:'全都记下来啦！马上帮你找最匹配的小伙伴 🤝',offer_categories:['媒体资源','政府关系','活动场地','翻译服务','品牌策划','数字营销','KOL资源','其他'],need_categories:['媒体曝光','合作伙伴','供应商','政府对接','KOL合作','活动执行','翻译本地化','咨询服务','人才招聘','其他'],group_categories:['媒体公关','技术创业','投资理财','教育培训','电商零售','房产家居','医疗健康','法律咨询','设计创意','出海跨境','其他']};
+const DB=(()=>{
+  const g=k=>{try{return JSON.parse(localStorage.getItem('cm_'+k)||'[]')}catch(e){return[]}};
+  const s=(k,v)=>localStorage.setItem('cm_'+k,JSON.stringify(v));
+  const u=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  const GC=()=>{const c=g('config');return c.length?c[0]:CONFIG};
+  return {
+    getConfig:()=>GC(),
+    createGroup:(data)=>{
+      const gs=g('groups');const gr={id:gs.length?Math.max(...gs.map(x=>x.id))+1:1,name:data.name,description:data.description||'',category:data.category||'其他',visibility:data.visibility||'public',primary_admin_id:null,admin_ids:[],invite_code:u().slice(0,6).toUpperCase(),qr_code_url:'',join_approval:data.join_approval!==false,max_free_join:0,created_at:new Date().toISOString()};
+      gs.push(gr);s('groups',gs);
+      const ms=g('members');const m={id:ms.length?Math.max(...ms.map(x=>x.id))+1:1,group_id:gr.id,user_token:data.user_token,name:data.requester_name||'管理员',intro:'',company:'',position:'',tags:[],registration_completed:true,status:'active',created_at:new Date().toISOString()};
+      ms.push(m);s('members',ms);gr.primary_admin_id=m.id;gr.admin_ids=[m.id];s('groups',gs);
+      return {group_id:gr.id,name:gr.name,invite_code:gr.invite_code,invite_link:window.location.origin+'/?group_id='+gr.id+'&code='+gr.invite_code,admin_member_id:m.id,message:'群组创建成功'};
+    },
+    getGroup:(id)=>{const gs=g('groups');const gr=gs.find(x=>x.id===id);return gr||null;},
+    updateGroup:(id,data)=>{const gs=g('groups');const gr=gs.find(x=>x.id===id);if(!gr)throw new Error('群组不存在');Object.keys(data).forEach(k=>{if(k!=='id')gr[k]=data[k]});s('groups',gs);return{message:'已更新'};},
+    getDiscoverGroups:(token)=>{
+      let gs=g('groups').filter(gr=>gr.visibility==='public');
+      return {groups:gs.map(gr=>{const ms=g('members').filter(m=>m.group_id===gr.id);return{...gr,member_count:ms.length,is_member:ms.some(m=>m.user_token===token),category:gr.category||'其他'}})};
+    },
+    getMembers:(gid)=>g('members').filter(m=>m.group_id===gid),
+    joinGroup:(gid,data)=>{
+      const gs=g('groups');const gr=gs.find(x=>x.id===gid);if(!gr)throw new Error('群组不存在');
+      if(!data.invite_code_bypass&&gr.invite_code!==data.invite_code)throw new Error('邀请码错误');
+      const ms=g('members');
+      const ex=ms.find(m=>m.group_id===gid&&m.user_token===data.user_token);
+      if(ex)return{member_id:ex.id,group_id:gid,registration_required:!ex.registration_completed,needs_approval:false,message:'你已在该群组中'};
+      if(!gr.join_approval){
+        const m={id:ms.length?Math.max(...ms.map(x=>x.id))+1:1,group_id:gid,user_token:data.user_token,name:data.requester_name||'新成员',intro:'',company:'',position:'',tags:[],registration_completed:false,status:'active',created_at:new Date().toISOString()};
+        ms.push(m);s('members',ms);
+        return{member_id:m.id,group_id:gid,registration_required:true,needs_approval:false,message:'已加入群组，请完成注册'};
+      }
+      const jrs=g('join_requests');const jr={id:jrs.length+1,group_id:gid,requester_name:data.requester_name||'新成员',requester_intro:data.requester_intro||'',requester_user_token:data.user_token,status:'pending',created_at:new Date().toISOString()};
+      jrs.push(jr);s('join_requests',jrs);
+      return{needs_approval:true,request_id:jr.id,message:`申请已提交，等待「${gr.name}」群主审批`};
+    },
+    getResources:(gid,filter={})=>{
+      const ms=g('members').filter(m=>m.group_id===gid);let rs=g('resources').filter(r=>ms.some(m=>m.id===r.member_id));
+      if(filter.type&&filter.type!=='all')rs=rs.filter(r=>r.resource_type===filter.type);
+      if(filter.category)rs=rs.filter(r=>r.category===filter.category);
+      if(filter.search)rs=rs.filter(r=>(r.title+(r.description||'')).includes(filter.search));
+      return rs.map(r=>{const m=ms.find(x=>x.id===r.member_id);return{...r,member_name:m?.name||'未知'};});
+    },
+    createResource:(data)=>{const rs=g('resources');const r={id:rs.length+1,member_id:data.member_id,group_id:data.group_id,resource_type:data.resource_type,category:data.category,title:data.title,description:data.description||'',tags:data.tags||[],created_at:new Date().toISOString()};rs.push(r);s('resources',rs);return r;},
+    updateMember:(id,data)=>{const ms=g('members');const m=ms.find(x=>x.id===id);if(!m)return;if(data.name)m.name=data.name;if(data.company)m.company=data.company;if(data.position)m.position=data.position;if(data.intro)m.intro=data.intro;if(data.tags)m.tags=data.tags;if(data.registration_completed!==undefined)m.registration_completed=data.registration_completed;s('members',ms);},
+    chatMessage:(data)=>{
+      let member=g('members').find(m=>m.user_token===data.user_token&&m.group_id===data.group_id);
+      if(!member){
+        const ms=g('members');const gr=g('groups').find(x=>x.id===data.group_id);const gname=gr?gr.name:'社群';
+        member={id:ms.length?Math.max(...ms.map(x=>x.id))+1:1,group_id:data.group_id,user_token:data.user_token,name:'新成员',intro:'',company:'',position:'',tags:[],registration_completed:false,status:'active',created_at:new Date().toISOString()};
+        ms.push(member);s('members',ms);
+      }
+      const gr=g('groups').find(x=>x.id===data.group_id);const gname=gr?gr.name:'社群';
+      const step=data.step||0;const msg=data.message||'';
+      if(!member.registration_completed){
+        const nm=msg.match(/(?:我是|我叫|我叫作|姓名[：:]?\s*)([\u4e00-\u9fa5]{2,4})/);
+        if(nm&&(!member.name||member.name==='新成员'))member.name=nm[1];
+        const tags=[];['媒体','公关','营销','设计','翻译','技术','金融','教育','品牌','跨境','出海','沙特','政府','咨询','法律','AI','产品','运营'].forEach(k=>{if(msg.includes(k))tags.push(k)});
+        if(tags.length)member.tags=[...new Set([...(member.tags||[]),...tags])];
+        s('members',g('members'));
+        const dn=member.name!=='新成员'?member.name:'新朋友';const cfg=GC();
+        let reply='',next_step=step+1,done=false;
+        if(step===0)reply=cfg.onboarding_step_0.replace('{group_name}',gname).replace('{name}',dn);
+        else if(step===1)reply=cfg.onboarding_step_1.replace('{group_name}',gname).replace('{name}',dn);
+        else if(step===2)reply=cfg.onboarding_step_2.replace('{group_name}',gname).replace('{name}',dn);
+        else if(step===3)reply=cfg.onboarding_step_3.replace('{group_name}',gname).replace('{name}',dn);
+        else{reply=cfg.onboarding_step_4.replace('{group_name}',gname).replace('{name}',dn);done=true;next_step=-1;member.registration_completed=true;s('members',g('members'));}
+        return{member_id:member.id,reply,step,next_step,done,auto_match_results:[],cross_group_recs:[],extracted:{},mode:'onboarding'};
+      }
+      return{member_id:member.id,reply:`作为${gname}的AI助手，我可以帮你：\n• 查信息：「群里有多少人？」\n• 搜资源：「找翻译」「谁做设计」\n• 更新资料：「我最近需要设计师」\n• 重新匹配：「帮我重新匹配」\n\n随时来找我聊天哦～`,step:-1,next_step:-1,done:false,mode:'assistant'};
+    },
+    getJoinRequests:(gid)=>g('join_requests').filter(r=>r.group_id===gid),
+    approveJoinRequest:(rid)=>{const jrs=g('join_requests');const jr=jrs.find(x=>x.id===rid);if(!jr)throw new Error('不存在');jr.status='approved';s('join_requests',jrs);const ms=g('members');const m={id:ms.length?Math.max(...ms.map(x=>x.id))+1:1,group_id:jr.group_id,user_token:jr.requester_user_token,name:jr.requester_name,intro:jr.requester_intro||'',company:'',position:'',tags:[],registration_completed:false,status:'active',created_at:new Date().toISOString()};ms.push(m);s('members',ms);return{message:'已通过'};},
+    rejectJoinRequest:(rid)=>{const jrs=g('join_requests');const jr=jrs.find(x=>x.id===rid);if(jr)jr.status='rejected';s('join_requests',jrs);return{message:'已拒绝'};},
+    getUserGroups:(token)=>{const ms=g('members').filter(m=>m.user_token===token);const gs=g('groups');const managed=[],joined=[];ms.forEach(m=>{const gr=gs.find(x=>x.id===m.group_id);if(!gr)return;const mc=g('members').filter(mm=>mm.group_id===gr.id).length;const role=gr.primary_admin_id===m.id?'primary_admin':gr.admin_ids.includes(m.id)?'admin':'member';if(role==='primary_admin'||role==='admin')managed.push({group_id:gr.id,name:gr.name,category:gr.category,member_count:mc,role,member_id:m.id,registration_completed:m.registration_completed});else joined.push({group_id:gr.id,name:gr.name,category:gr.category,member_count:mc,role:'member',member_id:m.id,registration_completed:m.registration_completed})});return{managed,joined};},
+    getNotifications:(token)=>{const ms=g('members').filter(m=>m.user_token===token);const mids=ms.map(m=>m.id);return{notifications:g('notifications').filter(n=>mids.includes(n.member_id)).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))};},
+    markNotifRead:(id)=>{const ns=g('notifications');const n=ns.find(x=>x.id===id);if(n)n.is_read=true;s('notifications',ns);},
+    getDashboard:(gid)=>{const ms=g('members').filter(m=>m.group_id===gid);const rs=g('resources').filter(r=>ms.some(m=>m.id===r.member_id));return{summary:{total_members:ms.length,registration_rate:ms.length?Math.round(ms.filter(m=>m.registration_completed).length/ms.length*100)+'%':'0%',total_offers:rs.filter(r=>r.resource_type==='offer').length,total_needs:rs.filter(r=>r.resource_type==='need').length,total_matches:0,active_members_30d:ms.length},member_growth:[],resource_growth:[],offer_categories:[],need_categories:[],top_tags:[]};},
+    // ===== MESSAGES =====
+    getConversations:(token)=>{
+      const ms=g('members').filter(m=>m.user_token===token);const mids=ms.map(m=>m.id);
+      const msgs=g('messages');const allMembers=g('members');
+      // 自动从 messages 里推导对话列表（按 partner_id）
+      const partnerMap={};
+      msgs.forEach(x=>{
+        let myId=null,partnerId=null;
+        if(mids.includes(x.from_member_id)){myId=x.from_member_id;partnerId=x.to_member_id;}
+        else if(mids.includes(x.to_member_id)){myId=x.to_member_id;partnerId=x.from_member_id;}
+        if(myId&&partnerId){
+          const k=myId+':'+partnerId;
+          if(!partnerMap[k]||new Date(x.created_at)>new Date(partnerMap[k].last_time)){
+            partnerMap[k]={member_id:myId,partner_id:partnerId,last_message:x.content,last_time:x.created_at,group_id:x.group_id};
+          }
+        }
+      });
+      const convs=Object.values(partnerMap);
+      return{conversations:convs.map(c=>{
+        const partner=allMembers.find(m=>m.id===c.partner_id);
+        const unread=msgs.filter(x=>x.from_member_id===c.partner_id&&x.to_member_id===c.member_id&&!x.is_read).length;
+        return{...c,partner:{id:c.partner_id,name:partner?.name||'未知',company:partner?.company||'',position:partner?.position||'',tags:partner?.tags||[]},unread_count:unread};
+      }).sort((a,b)=>new Date(b.last_time)-new Date(a.last_time))};
+    },
+    getMessages:(token,partnerId)=>{
+      const ms=g('members').filter(m=>m.user_token===token);const mids=ms.map(m=>m.id);
+      const msgs=g('messages').filter(x=>(mids.includes(x.from_member_id)&&x.to_member_id===partnerId)||(x.from_member_id===partnerId&&mids.includes(x.to_member_id)));
+      return{messages:msgs.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))};
+    },
+    sendMessage:(data)=>{
+      const msgs=g('messages');const m={id:msgs.length?Math.max(...msgs.map(x=>x.id))+1:1,from_member_id:data.from_member_id||data.from_id,to_member_id:data.to_member_id||data.to_id,group_id:data.group_id||0,content:data.content,is_read:false,created_at:new Date().toISOString()};
+      msgs.push(m);s('messages',msgs);
+      return{message:'已发送',data:m};
+    },
+    // ===== BOOKMARKS =====
+    getBookmarks:(token)=>{
+      const allMs=g('members');
+      const myMids=allMs.filter(m=>m.user_token===token).map(m=>m.id);
+      const bms=g('bookmarks').filter(b=>b.user_token===token||myMids.includes(b.member_id));
+      const rs=g('resources');const gs=g('groups');
+      return{bookmarks:bms.map(b=>{
+        const bt=b.bookmark_type||(b.resource_id?'resource':'member');
+        if(bt==='resource'){
+          const r=rs.find(x=>x.id===b.resource_id);if(!r)return null;
+          const m=allMs.find(x=>x.id===r.member_id);const gr=gs.find(x=>x.id===r.group_id);
+          return{...b,bookmark_type:'resource',resource:{...r,member:m?{id:m.id,name:m.name,company:m.company||'',position:m.position||''}:null,group_name:gr?.name||''}};
+        }else{
+          const tm=allMs.find(x=>x.id===b.target_member_id);if(!tm)return null;
+          return{...b,bookmark_type:'member',target_member:{id:tm.id,name:tm.name,company:tm.company||'',position:tm.position||''}};
+        }
+      }).filter(Boolean).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))};
+    },
+    addBookmark:(data)=>{
+      const bms=g('bookmarks');
+      if(bms.find(b=>b.user_token===data.user_token&&b.resource_id===data.resource_id))return{message:'已收藏'};
+      const b={id:bms.length?Math.max(...bms.map(x=>x.id))+1:1,user_token:data.user_token,resource_id:data.resource_id,note:data.note||'',created_at:new Date().toISOString()};
+      bms.push(b);s('bookmarks',bms);return{message:'已收藏',data:b};
+    },
+    removeBookmark:(token,rid)=>{
+      const bms=g('bookmarks').filter(b=>!(b.user_token===token&&b.resource_id===rid));
+      s('bookmarks',bms);return{message:'已取消收藏'};
+    },
+    // ===== ANNOUNCEMENTS =====
+    getAnnouncements:(gid)=>{
+      return{announcements:g('announcements').filter(a=>a.group_id===gid).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))};
+    },
+    // ===== EVENTS =====
+    getEvents:(gid)=>{
+      return{events:g('events').filter(e=>!gid||e.group_id===gid).sort((a,b)=>new Date(a.start_at)-new Date(b.start_at))};
+    },
+    getUserEvents:(token)=>{
+      const ms=g('members').filter(m=>m.user_token===token);const gids=ms.map(m=>m.group_id);
+      return{events:g('events').filter(e=>gids.includes(e.group_id)).sort((a,b)=>new Date(a.start_at)-new Date(b.start_at))};
+    },
+    markAllNotifRead:(token)=>{
+      const ms=g('members').filter(m=>m.user_token===token);const mids=ms.map(m=>m.id);
+      const ns=g('notifications');ns.forEach(n=>{if(mids.includes(n.member_id))n.is_read=true});
+      s('notifications',ns);return{message:'已全部已读'};
+    }
+  };
+})();
+
+// ===== API ROUTER =====
+async function api(path,opts={}){
+  const method=opts.method||'GET';const body=opts.body||{};
+  const cfg=CONFIG;
+  // strip query string for matching
+  let qs={};
+  if(path.includes('?')){
+    const qi=path.indexOf('?');
+    const search=new URLSearchParams(path.slice(qi+1));
+    search.forEach((v,k)=>{qs[k]=v});
+    path=path.slice(0,qi);
+  }
+  try{
+    if(path==='/api/config')return DB.getConfig();
+    if(path==='/api/admin/config'&&method==='PUT'){return{message:'配置已更新（本地模式）'};}
+    if(path==='/api/groups'&&method==='POST')return DB.createGroup(body);
+    if(path.match(/^\/api\/groups\/\d+$/)&&method==='GET'){
+      const g=DB.getGroup(parseInt(path.split('/')[3]));if(!g)throw new Error('不存在');
+      const ms=DB.getMembers(g.id);return{...g,member_count:ms.length,is_member:ms.some(m=>m.user_token===(body.user_token||qs.user_token))};
+    }
+    if(path.match(/^\/api\/groups\/\d+$/)&&method==='PUT')return DB.updateGroup(parseInt(path.split('/')[3]),body);
+    if(path==='/api/groups/discover'){
+      const r=DB.getDiscoverGroups(body.user_token||qs.user_token);
+      // 前端期望数组；支持 category / search 筛选
+      let arr=r.groups||[];
+      const cat=body.category||qs.category;
+      const search=body.search||qs.search;
+      if(cat){const cats=cat.split(',');arr=arr.filter(g=>cats.includes(g.category));}
+      if(search){arr=arr.filter(g=>(g.name+(g.description||'')).includes(search));}
+      return arr;
+    }
+    if(path==='/api/groups/categories')return{categories:cfg.group_categories};
+    if(path.match(/^\/api\/groups\/[^\/]+\/join$/)&&method==='POST')return DB.joinGroup(parseInt(path.split('/')[3]),body);
+    if(path.match(/^\/api\/groups\/[^\/]+\/request$/)&&method==='POST')return DB.joinGroup(parseInt(path.split('/')[3]),{...body,invite_code_bypass:true});
+    if(path.match(/^\/api\/groups\/[^\/]+\/members$/))return DB.getMembers(parseInt(path.split('/')[3])).map(m=>({...m,resource_count:DB.getResources(m.group_id).filter(r=>r.member_id===m.id).length}));
+    if(path.match(/^\/api\/members\/[^\/]+$/)&&method==='PUT'){DB.updateMember(body.member_id||parseInt(path.split('/')[3]),body);return{message:'ok'};}
+    if(path.match(/^\/api\/groups\/[^\/]+\/resources$/)&&method==='POST')return DB.createResource({...body,group_id:parseInt(path.split('/')[3])});
+    if(path.match(/^\/api\/groups\/[^\/]+\/resources$/)){
+      const gid=parseInt(path.split('/')[3]);
+      const filter={...body,...qs};
+      const list=DB.getResources(gid,filter);
+      // 兼容两种调用：loadPool 期望数组；其他可能期望 {resources:[]}
+      // 这里把每条资源 normalize 出 member 子对象
+      const ms=g => g;
+      const allMembers=JSON.parse(localStorage.getItem('cm_members')||'[]');
+      const enriched=list.map(r=>{const m=allMembers.find(mm=>mm.id===r.member_id);return{...r,member:m?{id:m.id,name:m.name,company:m.company||'',position:m.position||'',tags:m.tags||[]}:{id:r.member_id,name:r.member_name||'未知',company:''}};});
+      return enriched;
+    }
+    if(path==='/api/chat/message')return DB.chatMessage(body);
+    if(path==='/api/user/groups')return DB.getUserGroups(body.user_token||qs.user_token);
+    if(path.match(/^\/api\/groups\/[^\/]+\/requests$/))return DB.getJoinRequests(parseInt(path.split('/')[3]));
+    if(path.match(/^\/api\/groups\/[^\/]+\/requests\/[^\/]+$/)&&method==='PUT'){
+      if(body.status==='approved')return DB.approveJoinRequest(parseInt(path.split('/')[5]));
+      return DB.rejectJoinRequest(parseInt(path.split('/')[5]));
+    }
+    if(path==='/api/notifications')return DB.getNotifications(body.user_token||qs.user_token);
+    if(path.match(/^\/api\/notifications\/[^\/]+\/read$/)&&method==='PUT'){DB.markNotifRead(parseInt(path.split('/')[3]));return{message:'ok'};}
+    if(path==='/api/notifications/read-all'&&method==='PUT')return DB.markAllNotifRead(body.user_token);
+    // ===== MESSAGES =====
+    if(path==='/api/messages/conversations')return DB.getConversations(body.user_token||qs.user_token);
+    if(path.match(/^\/api\/messages\/\d+$/)&&method==='GET')return DB.getMessages(body.user_token||qs.user_token,parseInt(path.split('/')[3]));
+    if(path==='/api/messages'&&method==='POST')return DB.sendMessage(body);
+    // ===== BOOKMARKS =====
+    if(path==='/api/bookmarks'&&method==='GET')return DB.getBookmarks(body.user_token||qs.user_token);
+    if(path==='/api/bookmarks'&&method==='POST')return DB.addBookmark(body);
+    if(path.match(/^\/api\/bookmarks\/\d+$/)&&method==='DELETE')return DB.removeBookmark(body.user_token||qs.user_token,parseInt(path.split('/')[3]));
+    // ===== ANNOUNCEMENTS / EVENTS =====
+    if(path.match(/^\/api\/groups\/\d+\/announcements$/)){
+      if(method==='POST'){const ans=JSON.parse(localStorage.getItem('cm_announcements')||'[]');const a={id:ans.length?Math.max(...ans.map(x=>x.id))+1:1,group_id:parseInt(path.split('/')[3]),author_id:1,title:body.title,content:body.content,pinned:!!body.pinned,created_at:new Date().toISOString()};ans.push(a);localStorage.setItem('cm_announcements',JSON.stringify(ans));return{message:'ok',data:a};}
+      const r=DB.getAnnouncements(parseInt(path.split('/')[3]));const allM=JSON.parse(localStorage.getItem('cm_members')||'[]');
+      return (r.announcements||[]).map(a=>{const m=allM.find(x=>x.id===a.author_id);return{...a,author:m?{id:m.id,name:m.name}:null}});
+    }
+    if(path.match(/^\/api\/groups\/\d+\/announcements\/\d+$/)&&method==='DELETE'){const id=parseInt(path.split('/')[5]);const ans=JSON.parse(localStorage.getItem('cm_announcements')||'[]').filter(a=>a.id!==id);localStorage.setItem('cm_announcements',JSON.stringify(ans));return{message:'ok'};}
+    if(path.match(/^\/api\/groups\/\d+\/events$/)){
+      if(method==='POST'){const evs=JSON.parse(localStorage.getItem('cm_events')||'[]');const e={id:evs.length?Math.max(...evs.map(x=>x.id))+1:1,group_id:parseInt(path.split('/')[3]),title:body.title,description:body.description||'',location:body.location||'',start_at:body.start_at,end_at:body.end_at||body.start_at,attendees:0,created_at:new Date().toISOString()};evs.push(e);localStorage.setItem('cm_events',JSON.stringify(evs));return{message:'ok',data:e};}
+      const r=DB.getEvents(parseInt(path.split('/')[3]));return r.events||[];
+    }
+    if(path.match(/^\/api\/groups\/\d+\/events\/\d+$/)&&method==='DELETE'){const id=parseInt(path.split('/')[5]);const evs=JSON.parse(localStorage.getItem('cm_events')||'[]').filter(e=>e.id!==id);localStorage.setItem('cm_events',JSON.stringify(evs));return{message:'ok'};}
+    if(path==='/api/events'){const r=DB.getUserEvents(body.user_token||qs.user_token);return r.events||[];}
+    if(path.match(/^\/api\/groups\/[^\/]+\/admin\/members$/))return DB.getMembers(parseInt(path.split('/')[3])).map(m=>({...m,resource_count:DB.getResources(m.group_id).filter(r=>r.member_id===m.id).length}));
+    if(path.match(/^\/api\/groups\/[^\/]+\/admin\/dashboard$/))return DB.getDashboard(parseInt(path.split('/')[3]));
+    if(path.match(/^\/api\/groups\/[^\/]+\/search$/)){const rs=DB.getResources(parseInt(path.split('/')[3]),{search:body.keyword||''});return rs.length?{results:rs,reply:`找到 ${rs.length} 条相关资源`}:{results:[],reply:'目前还没有匹配的人员和资源 🌱 我已经把你的需求记录下来了，等有恰当资源的时候，我会第一时间通知你的～'};}
+    if(path==='/api/upload')return{url:'/placeholder-qr.png',message:'上传成功（本地模式）'};
+    return {error:'not found'};
+  }catch(e){return {error:e.message};}
+}
+
+function genUUID(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16)})}
+
+// ===== STATE =====
+const API=window.location.origin;
+let communityConfig={},userToken=localStorage.getItem('wx_token')||'',activeGroupId=parseInt(localStorage.getItem('ag')||'0'),activeMemberId=parseInt(localStorage.getItem('am')||'0'),registrationCompleted=false,currentPoolType='all',currentPoolCat=null,discoverySelectedCategories=[],memberFilterTag=null,chatStep=0,chatMemberId=null,isGroupAdmin=false,currentGroup=null,suggestedCategory=null,gcCatDebounceTimer=null,manageGroupId=null,joinRequestGroupId=null;
+
+function genUUID(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16)})}
+function escapeHtml(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
+
+// ===== TOAST =====
+function showToast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2000)}
+
+// ===== NAV =====
+function hasActiveGroup(){return activeGroupId>0}
+const TABS={pool:'page-pool',chat:'page-chat',profile:'page-profile',discovery:'page-discovery',manage:'page-manage',messages:'page-messages',bookmarks:'page-bookmarks'};
+let currentMsgSubTab='notifications';
+function switchTab(tab){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-item').forEach(t=>t.classList.remove('active'));
+  const p=document.getElementById(TABS[tab]);if(p)p.classList.add('active');
+  document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+  // Header 按页面显隐
+  const ph=document.getElementById('pageHeader'),hg=document.getElementById('headerGroup');
+  if(['chat','messages'].includes(tab)){ph.style.display='none'}
+  else{ph.style.display='block'}
+  // headerGroup 仅在资源池显示
+  if(tab==='pool'&&activeGroupId){hg.style.display='inline-block';document.getElementById('headerTitle').textContent=communityConfig.community_name||'社群资源对接平台'}
+  else{hg.style.display='none';if(tab==='discovery'||tab==='profile'){document.getElementById('headerTitle').textContent=communityConfig.community_name||'社群资源对接平台'}}
+  if(tab==='pool')loadPoolPage();
+  if(tab==='chat')hasActiveGroup()?loadChat():loadGlobalChat();
+  if(tab==='profile')loadProfile();
+  if(tab==='discovery')loadDiscovery();
+  if(tab==='manage')loadManagePage();
+  if(tab==='messages'){switchMsgSubTab('notifications',document.querySelector('#msgSubTabs .filter-tab'))}
+  if(tab==='bookmarks')loadBookmarks();
+}
+
+// ===== 微信授权登录 =====
+function isWechatLoggedIn(){return !!localStorage.getItem('wx_token')}
+function showWechatAuthModal(onSuccess){
+  const modal=document.getElementById('wechatAuthModal');
+  modal.style.display='flex';
+  modal._onSuccess=onSuccess;
+}
+function doWechatAuth(){
+  // 模拟微信授权：自动生成微信风格的用户信息
+  const names=['小明','小红','阿杰','小琳','大鹏','小薇','阿豪','乐乐','小雪','小宇','思思','阿文','静静','小飞','萌萌'];
+  const name=names[Math.floor(Math.random()*names.length)]+Math.floor(Math.random()*90+10);
+  const wxToken='wx_oid_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  localStorage.setItem('wx_token',wxToken);
+  localStorage.setItem('wx_nickname',name);
+  userToken=wxToken;
+  document.getElementById('wechatAuthModal').style.display='none';
+  showToast('✅ 微信授权登录成功');
+  updateProfileLoginUI();
+  const onSuccess=document.getElementById('wechatAuthModal')._onSuccess;
+  if(onSuccess)onSuccess();
+}
+
+function handleProfileLogin(){
+  if(isWechatLoggedIn()){
+    // 已登录：切换账号
+    if(confirm('确定要退出当前账号吗？')){localStorage.removeItem('wx_token');localStorage.removeItem('wx_nickname');localStorage.removeItem('wx_intro');userToken=genUUID();updateProfileLoginUI();showToast('已退出登录')}
+  }else{
+    showWechatAuthModal();
+  }
+}
+function updateProfileLoginUI(){
+  const loggedIn=isWechatLoggedIn();
+  const nick=localStorage.getItem('wx_nickname')||'';
+  document.getElementById('profileNameDisplay').textContent=loggedIn?nick:'微信账号登录';
+  document.getElementById('profileLoginHint').textContent=loggedIn?`已授权登录 · ${nick}`:'登录后可同步你在各群组的信息';
+  document.getElementById('profileLoginBtn').textContent=loggedIn?'🔄 切换账号':'💚 微信账号登录';
+  document.getElementById('profileLoginBtn').style.background=loggedIn?'#fff':'var(--primary)';
+  document.getElementById('profileLoginBtn').style.color=loggedIn?'var(--text)':'#fff';
+  document.getElementById('profileLoginBtn').style.border=loggedIn?'1px solid var(--border)':'none';
+}
+
+// ===== SEED DATA (Demo模式下预置示例内容) =====
+function seedDataIfEmpty(){
+  // Demo模式：清空旧数据，重新注入种子数据
+  Object.keys(localStorage).filter(k=>k.startsWith('cm_')).forEach(k=>localStorage.removeItem(k));
+  // 时间锚点：让通知/消息看起来像最近发生
+  const T=(mins)=>new Date(Date.now()-mins*60000).toISOString();
+  const D=(days)=>new Date(Date.now()-days*86400000).toISOString();
+  const now=new Date().toISOString();
+  const seed={};
+  
+  // --- Groups (8个，Haile是1和6的群主) ---
+  seed.groups=[
+    {id:1,name:'沙特品牌出海公关群',description:'沙特市场品牌公关、GR、媒体对接，覆盖政府关系、KOL资源、活动执行。专注帮助中国品牌在沙特做本地化落地',category:'出海跨境',visibility:'public',invite_code:'SAUDI1',qr_code_url:'',join_approval:false,created_at:D(120),primary_admin_id:1,admin_ids:[1]},
+    {id:2,name:'中东科技创业者',description:'聚焦中东 tech startup 生态，技术创业、融资对接、产品出海。MENA 创业第一手信息',category:'技术创业',visibility:'public',invite_code:'TECH02',qr_code_url:'',join_approval:false,created_at:D(180),primary_admin_id:8,admin_ids:[8]},
+    {id:3,name:'跨境电商卖家联盟',description:'Noon/Amazon 中东卖家交流，选品、物流、支付全链路。每周三晚 8 点选品复盘',category:'电商零售',visibility:'public',invite_code:'EC003',qr_code_url:'',join_approval:true,created_at:D(220),primary_admin_id:9,admin_ids:[9]},
+    {id:4,name:'利雅得华人生活圈',description:'沙特华人日常生活互助信息，租房、签证、学校、活动。新移民必加',category:'其他',visibility:'public',invite_code:'RIY004',qr_code_url:'',join_approval:false,created_at:D(300),primary_admin_id:10,admin_ids:[10]},
+    {id:5,name:'品牌策略与创意',description:'品牌定位、创意内容、整合营销。服务过出海品牌的同学聚集地',category:'品牌策划',visibility:'public',invite_code:'BRD005',qr_code_url:'',join_approval:false,created_at:D(150),primary_admin_id:11,admin_ids:[11]},
+    {id:6,name:'AI出海工具研习社',description:'AI × 出海 × 增长。每周分享 Manus / Claude / 飞书 AI 等工具在出海场景的实战玩法',category:'技术创业',visibility:'public',invite_code:'AIGO06',qr_code_url:'',join_approval:false,created_at:D(45),primary_admin_id:1,admin_ids:[1]},
+    {id:7,name:'出海播客主理人圈',description:'中文播客 × 出海主题。剪辑、嘉宾、商单、平台运营经验互助',category:'媒体公关',visibility:'public',invite_code:'POD007',qr_code_url:'',join_approval:true,created_at:D(60),primary_admin_id:20,admin_ids:[20]},
+    {id:8,name:'MENA投融资闭门会',description:'PIF / Aramco 系生态，MENA 主权基金动态、Term Sheet 解读、被投企业互助',category:'投资理财',visibility:'private',invite_code:'VCMENA',qr_code_url:'',join_approval:true,created_at:D(90),primary_admin_id:21,admin_ids:[21]}
+  ];
+  
+  // --- Members ---
+  // Haile 是 group 1 & 6 的群主，同时是 group 2、5、7 的普通成员
+  // 其他成员遍布各群，构造真实社群感
+  const HAILE='wx_oid_haile_demo';
+  seed.members=[
+    // === Group 1 「沙特品牌出海公关群」 18 人 ===
+    {id:1,group_id:1,user_token:HAILE,name:'Haile',intro:'前36氪记者，现专注中国品牌沙特出海。2024年在利雅得做了2年品牌GTM，飞书AI Skills Pioneer Award。能聊AI×出海、品牌策略、MENA本地化',company:'独立顾问',position:'品牌策略 & AI出海陪跑',tags:['品牌','出海','跨境','沙特','媒体','AI','策略'],registration_completed:true,status:'active',created_at:D(120)},
+    {id:2,group_id:1,user_token:'wx_u_002',name:'张明远',intro:'在中东做了8年GR，熟悉沙特各政府部门对接流程，PIF、SAGIA都有人脉',company:'华为中东',position:'政府事务总监',tags:['政府','沙特','GR','跨境'],registration_completed:true,status:'active',created_at:D(115)},
+    {id:3,group_id:1,user_token:'wx_u_003',name:'LisaChen',intro:'专注消费品出海中东的整合营销，服务过安克、小米、SHEIN等品牌',company:'蓝标传媒',position:'客户群总监',tags:['品牌','营销','KOL','媒体','跨境'],registration_completed:true,status:'active',created_at:D(110)},
+    {id:4,group_id:1,user_token:'wx_u_004',name:'阿卜杜拉 Abdullah',intro:'沙特本地人，在华留学10年，中阿双语，帮品牌做本地化落地。SABIC 中国区顾问',company:'SABIC',position:'中国区顾问',tags:['翻译','本地化','沙特','咨询'],registration_completed:true,status:'active',created_at:D(108)},
+    {id:5,group_id:1,user_token:'wx_u_005',name:'王思涵',intro:'利雅得活动公司创始人，有Kingdom Tower附近场地资源和活动执行团队',company:'RiyadhEvents',position:'创始人',tags:['活动','场地','执行','沙特'],registration_completed:true,status:'active',created_at:D(100)},
+    {id:6,group_id:1,user_token:'wx_u_006',name:'JasonLiu',intro:'原字节跳动国际化PR，现自由职业。可对接中东主流媒体记者关系',company:'前字节跳动',position:'独立PR顾问',tags:['媒体','公关','品牌'],registration_completed:true,status:'active',created_at:D(95)},
+    {id:7,group_id:1,user_token:'wx_u_007',name:'陈雨晴',intro:'沙特华人律师，专攻外商投资合规和劳动法。在利雅得执业6年',company:'中伦律所沙特办',position:'高级合伙人',tags:['法律','沙特','合规','咨询'],registration_completed:true,status:'active',created_at:D(90)},
+    {id:12,group_id:1,user_token:'wx_u_012',name:'刘博文',intro:'抖音百万粉MCN经纪人，手上有中东本地TikTok/IG KOL资源池，签约达人80+',company:'星图MCN',position:'KOL经纪人',tags:['KOL','媒体','营销','短视频'],registration_completed:true,status:'active',created_at:D(85)},
+    {id:15,group_id:1,user_token:'wx_u_015',name:'FatimaAlSaud',intro:'沙特女性时尚 KOL，Instagram 38万粉丝。专注美妆、奢侈品、健康类合作',company:'Self-employed',position:'KOL / Influencer',tags:['KOL','沙特','时尚','女性'],registration_completed:true,status:'active',created_at:D(40)},
+    {id:16,group_id:1,user_token:'wx_u_016',name:'Hassan Al-Otaibi',intro:'前 Aramco 数字化项目经理，现做 B2B 中沙桥梁，能源、化工、智能制造方向',company:'Bridge Advisory',position:'Founding Partner',tags:['政府','能源','沙特','GR'],registration_completed:true,status:'active',created_at:D(38)},
+    {id:17,group_id:1,user_token:'wx_u_017',name:'孙皓',intro:'蜜雪冰城海外加盟事业部，负责中东市场拓展。已在迪拜开 4 家直营店',company:'蜜雪冰城',position:'海外加盟总监',tags:['餐饮','加盟','中东','品牌'],registration_completed:true,status:'active',created_at:D(35)},
+    {id:18,group_id:1,user_token:'wx_u_018',name:'郑思雨',intro:'独立设计师，做品牌视觉系统设计。客户有出海茶饮、3C、美妆品牌',company:'Self-employed',position:'品牌视觉设计师',tags:['设计','品牌','视觉','创意'],registration_completed:true,status:'active',created_at:D(30)},
+    {id:19,group_id:1,user_token:'wx_u_019',name:'吴启明',intro:'宁德时代海外业务部，关注沙特 NEOM 项目储能机会。希望对接政府关系',company:'宁德时代',position:'海外BD',tags:['新能源','沙特','BD','政府'],registration_completed:true,status:'active',created_at:D(25)},
+    {id:22,group_id:1,user_token:'wx_u_022',name:'林婉怡',intro:'前华为中东 Marketing，现 Lazada 中东市场负责人。擅长投放和数据分析',company:'Lazada中东',position:'Marketing Director',tags:['营销','电商','数据','中东'],registration_completed:true,status:'active',created_at:D(20)},
+    {id:23,group_id:1,user_token:'wx_u_023',name:'Khalid Bin Mohammed',intro:'利雅得本地媒体 Riyadh Daily 资深记者，可发科技/商业类专题报道',company:'Riyadh Daily',position:'Senior Editor',tags:['媒体','沙特','PR','记者'],registration_completed:true,status:'active',created_at:D(18)},
+    {id:24,group_id:1,user_token:'wx_u_024',name:'周晓萌',intro:'东方甄选海外业务，负责直播间出海中东方向。在找会阿语的主播',company:'东方甄选',position:'海外直播业务',tags:['直播','电商','中东','内容'],registration_completed:true,status:'active',created_at:D(12)},
+    {id:25,group_id:1,user_token:'wx_u_025',name:'高翔',intro:'前阿里国际化 PR，现自媒体 "中东商业观察" 主理人，公众号10万粉',company:'中东商业观察',position:'主理人',tags:['媒体','内容','自媒体','中东'],registration_completed:true,status:'active',created_at:D(8)},
+    {id:26,group_id:1,user_token:'wx_u_026',name:'Reema Al-Harbi',intro:'前埃森哲咨询顾问，现自己开本地咨询，帮中国品牌做沙特市场进入策略',company:'Reema Advisory',position:'Founder',tags:['咨询','沙特','策略','女性'],registration_completed:true,status:'active',created_at:D(5)},
+
+    // === Group 2 「中东科技创业者」 ===
+    {id:8,group_id:2,user_token:'wx_u_008',name:'赵一鸣',intro:'连续创业者，上一个项目被沙特主权基金 PIF 收购。现孵化 AI Agent 产品',company:'SaharaTech',position:'CEO & Founder',tags:['技术','创业','融资','沙特','AI'],registration_completed:true,status:'active',created_at:D(170)},
+    {id:13,group_id:2,user_token:HAILE,name:'Haile',intro:'品牌策略顾问，关注中东科技生态。可以帮 AI / SaaS 产品做品牌定位和媒体PR',company:'独立顾问',position:'品牌策略 & AI出海陪跑',tags:['品牌','出海','AI','策略','媒体'],registration_completed:true,status:'active',created_at:D(80)},
+    {id:27,group_id:2,user_token:'wx_u_027',name:'Mohammed Al-Qahtani',intro:'前 Careem 产品总监，现做出行类 super app。Pre-A 阶段',company:'Saudi Mobility',position:'CPO',tags:['产品','创业','出行','沙特'],registration_completed:true,status:'active',created_at:D(160)},
+    {id:28,group_id:2,user_token:'wx_u_028',name:'Yusuf Chen',intro:'新加坡-沙特双地办公，做 Web3 跨境支付，2024 年完成 800万美金 Seed',company:'PalmPay MENA',position:'Founder & CEO',tags:['Web3','支付','创业','跨境'],registration_completed:true,status:'active',created_at:D(140)},
+    {id:29,group_id:2,user_token:'wx_u_029',name:'李泽宇',intro:'AI Coding 公司出海方向负责人，关注 MENA 开发者市场',company:'CodeRabbit',position:'海外GTM负责人',tags:['AI','SaaS','开发者','GTM'],registration_completed:true,status:'active',created_at:D(70)},
+
+    // === Group 3 「跨境电商卖家联盟」 ===
+    {id:9,group_id:3,user_token:'wx_u_009',name:'MiaWang',intro:'跨境电商5年，专注中东市场，日订单量3000+。Noon Top 10% 卖家',company:'跨境优品',position:'运营总监',tags:['电商','跨境','中东','选品'],registration_completed:true,status:'active',created_at:D(200)},
+    {id:30,group_id:3,user_token:'wx_u_030',name:'AdamZhou',intro:'家居用品出海中东 3 年，年GMV 1.2亿。最近在找仓配合作伙伴',company:'HomeGulf',position:'创始人',tags:['电商','家居','物流','中东'],registration_completed:true,status:'active',created_at:D(180)},
+
+    // === Group 4 「利雅得华人生活圈」 ===
+    {id:10,group_id:4,user_token:'wx_u_010',name:'老马识途',intro:'在沙特生活12年，热心帮新移民解决签证、租房、子女上学的各种实际问题',company:'中沙贸易公司',position:'总经理',tags:['沙特','生活','签证','互助'],registration_completed:true,status:'active',created_at:D(290)},
+
+    // === Group 5 「品牌策略与创意」 ===
+    {id:11,group_id:5,user_token:'wx_u_011',name:'SophiaXu',intro:'前奥美策略总监，现独立品牌顾问。服务出海 DTC 品牌，做品牌 0-1 策略',company:'独立顾问',position:'品牌策略总监',tags:['品牌','策略','创意','营销'],registration_completed:true,status:'active',created_at:D(140)},
+    {id:14,group_id:5,user_token:HAILE,name:'Haile',intro:'品牌策略顾问，常和创意人聊 brief 怎么写、品牌叙事怎么搭',company:'独立顾问',position:'品牌策略 & AI出海陪跑',tags:['品牌','策略','创意','叙事'],registration_completed:true,status:'active',created_at:D(75)},
+    {id:31,group_id:5,user_token:'wx_u_031',name:'Vincent Lu',intro:'前 W+K 上海 ECD，现独立创意工作室，专做品牌 campaign',company:'Lu Studio',position:'Creative Director',tags:['创意','广告','品牌','导演'],registration_completed:true,status:'active',created_at:D(110)},
+
+    // === Group 6 「AI出海工具研习社」(Haile 群主，15 人) ===
+    {id:32,group_id:6,user_token:HAILE,name:'Haile',intro:'AI 出海陪跑顾问，Manus 重度用户。每周分享一个 AI 工作流，欢迎来玩',company:'独立顾问',position:'群主 / 品牌策略 & AI出海',tags:['AI','出海','Manus','品牌','工作流'],registration_completed:true,status:'active',created_at:D(45)},
+    {id:33,group_id:6,user_token:'wx_u_033',name:'王恺',intro:'前 OpenAI Asia BD，现做 AI Agent 创业。希望多交流 AI×垂直行业落地',company:'Stealth',position:'Founder',tags:['AI','Agent','创业','BD'],registration_completed:true,status:'active',created_at:D(40)},
+    {id:34,group_id:6,user_token:'wx_u_034',name:'NinaShi',intro:'飞书 AI Skills 高产作者，做了 200+ 个企业 AI 工作流。爱分享',company:'飞书',position:'AI Solutions',tags:['AI','飞书','工作流','SaaS'],registration_completed:true,status:'active',created_at:D(38)},
+    {id:35,group_id:6,user_token:'wx_u_035',name:'吕梓萱',intro:'独立开发者，做 Notion + AI 出海效率工具。月流水 $8k',company:'Indie Hacker',position:'独立开发者',tags:['AI','独立开发','SaaS','Notion'],registration_completed:true,status:'active',created_at:D(35)},
+    {id:36,group_id:6,user_token:'wx_u_036',name:'AlexZheng',intro:'前微软 Azure，现做 AI infra。可以聊 LLM 部署、成本优化、Agent 架构',company:'Self-employed',position:'AI Infra 顾问',tags:['AI','Infra','LLM','技术'],registration_completed:true,status:'active',created_at:D(30)},
+    {id:37,group_id:6,user_token:'wx_u_037',name:'梁文心',intro:'品牌方 AI 落地负责人。在腾讯做品牌，最近在用 AI 重构 brief 流程',company:'腾讯',position:'品牌 AI 项目PM',tags:['AI','品牌','PM','工作流'],registration_completed:true,status:'active',created_at:D(28)},
+    {id:38,group_id:6,user_token:'wx_u_038',name:'Daniel Park',intro:'韩国独立开发者，做面向 MENA 市场的 AI 翻译产品。在首尔和利雅得两地飞',company:'TranslateMENA',position:'Founder',tags:['AI','翻译','创业','MENA'],registration_completed:true,status:'active',created_at:D(22)},
+    {id:39,group_id:6,user_token:'wx_u_039',name:'陈一凡',intro:'前虎扑产品，现在做 AI 内容工具，月活 2 万。出海中东试水中',company:'AI Content Lab',position:'CEO',tags:['AI','内容','产品','出海'],registration_completed:true,status:'active',created_at:D(15)},
+    {id:40,group_id:6,user_token:'wx_u_040',name:'JuliaHe',intro:'美元基金看 AI Application，关注出海 MENA / 东南亚。早期项目欢迎聊',company:'Sequoia China',position:'Investment Associate',tags:['投资','AI','VC','早期'],registration_completed:true,status:'active',created_at:D(10)},
+    {id:41,group_id:6,user_token:'wx_u_041',name:'Yara Al-Rashid',intro:'KAUST AI 实验室在读 PhD，沙特本地 AI 圈，对中国 AI 出海非常感兴趣',company:'KAUST',position:'PhD Researcher',tags:['AI','学术','沙特','研究'],registration_completed:true,status:'active',created_at:D(7)},
+    {id:42,group_id:6,user_token:'wx_u_042',name:'罗思琪',intro:'AI Coach 自媒体，小红书 12 万粉。做 AI 工具评测和教学',company:'Self-employed',position:'AI Coach',tags:['AI','教育','自媒体','内容'],registration_completed:true,status:'active',created_at:D(4)},
+
+    // === Group 7 「出海播客主理人圈」 ===
+    {id:20,group_id:7,user_token:'wx_u_020',name:'季苏',intro:'《出海早知道》播客主理人，深聊出海创业者。50+ 期访谈',company:'Self-employed',position:'播客主理人',tags:['播客','出海','内容','媒体'],registration_completed:true,status:'active',created_at:D(58)},
+    {id:43,group_id:7,user_token:HAILE,name:'Haile',intro:'《MENA 来风》播客主理人。讲我从技术小白到 AI 信徒的故事，也聊出海女性故事',company:'独立播客',position:'主理人',tags:['播客','AI','女性','出海','MENA'],registration_completed:true,status:'active',created_at:D(50)},
+    {id:44,group_id:7,user_token:'wx_u_044',name:'阿星',intro:'《硅谷101》制作人，每周一期。希望和其他播客主理人交换嘉宾资源',company:'硅谷101',position:'制作人',tags:['播客','内容','制作','嘉宾'],registration_completed:true,status:'active',created_at:D(40)},
+
+    // === Group 8 「MENA投融资闭门会」 ===
+    {id:21,group_id:8,user_token:'wx_u_021',name:'David Wen',intro:'前 GGV 中东合伙人，现自己出来做天使。专注 MENA AI / 消费',company:'独立天使',position:'Angel Investor',tags:['投资','MENA','天使','AI'],registration_completed:true,status:'active',created_at:D(85)}
+  ];
+  
+  // --- Resources (40+ 条，覆盖各群，Haile 是活跃发布者) ---
+  seed.resources=[
+    // ===== Group 1 「沙特品牌出海公关群」=====
+    // Haile (m1) 自己的 offer & need
+    {id:1,member_id:1,group_id:1,resource_type:'offer',category:'品牌策划',title:'沙特品牌GTM全案陪跑',description:'2年利雅得本地GTM经验，能从品牌定位、媒体PR、KOL投放到落地活动全链路陪跑。已服务过3个DTC品牌出海中东',tags:['品牌','GTM','出海','沙特'],created_at:D(40)},
+    {id:2,member_id:1,group_id:1,resource_type:'offer',category:'媒体资源',title:'阿语媒体撰稿与编辑',description:'前36氪记者，可定制阿语商业稿件，已在 Arab News、Asharq Business 发表过专题',tags:['媒体','内容','PR','阿语'],created_at:D(28)},
+    {id:3,member_id:1,group_id:1,resource_type:'need',category:'KOL合作',title:'寻找沙特男性运动类KOL',description:'客户是国产运动鞋品牌，要在斋月前做一波 social campaign，预算30-50万人民币，找3-5个10-50万粉腰部KOL',tags:['KOL','沙特','运动','男性'],created_at:D(5)},
+    {id:4,member_id:1,group_id:1,resource_type:'need',category:'政府对接',title:'对接SAGIA外商投资牌照',description:'品牌客户要在利雅得设立分公司，需要 SAGIA / MISA 牌照办理顾问',tags:['政府','合规','沙特'],created_at:D(2)},
+    // 其他成员的 offer
+    {id:5,member_id:2,group_id:1,resource_type:'offer',category:'政府关系',title:'沙特商务部对接通道',description:'可直接对接沙特 MISA、SAGIA，帮中国品牌做投资牌照、政府公关',tags:['沙特','政府','GR'],created_at:D(80)},
+    {id:6,member_id:3,group_id:1,resource_type:'offer',category:'KOL资源',title:'中东KOL投放全案',description:'覆盖TikTok / Instagram 中东KOL矩阵，签约500+达人。Top 10% ROI 案例可分享',tags:['KOL','营销','中东'],created_at:D(75)},
+    {id:7,member_id:4,group_id:1,resource_type:'offer',category:'翻译服务',title:'阿拉伯语本地化翻译',description:'中阿双语母语，做品牌文案、合同、产品手册翻译和文化适配审校',tags:['翻译','阿拉伯语','本地化'],created_at:D(70)},
+    {id:8,member_id:5,group_id:1,resource_type:'offer',category:'活动场地',title:'利雅得高端活动场地',description:'Kingdom Tower附近200平米多功能场地，可容纳80人，适合品牌发布会和行业沙龙。可配执行团队',tags:['场地','活动','利雅得'],created_at:D(65)},
+    {id:9,member_id:6,group_id:1,resource_type:'offer',category:'媒体资源',title:'中东主流媒体PR发稿',description:'可对接 Arab News、Gulf News、Saudi Gazette、Asharq Al-Awsat 发稿，含本地化改写',tags:['媒体','PR','中东'],created_at:D(60)},
+    {id:10,member_id:7,group_id:1,resource_type:'offer',category:'咨询服务',title:'沙特外商投资法律咨询',description:'外商投资架构设计、合资公司设立、劳动法合规、版权和商标注册',tags:['法律','沙特','合规'],created_at:D(55)},
+    {id:11,member_id:12,group_id:1,resource_type:'offer',category:'KOL资源',title:'中东本地KOL达人直签',description:'手上有50+沙特本地生活类、科技类KOL直签资源，省去 MCN 中间费，性价比高',tags:['KOL','沙特','短视频'],created_at:D(50)},
+    {id:12,member_id:15,group_id:1,resource_type:'offer',category:'KOL资源',title:'沙特女性时尚类KOL本人',description:'Instagram 38万粉，专注美妆/奢侈品/Wellness 类合作。可签长约 ambassador',tags:['KOL','沙特','时尚','女性'],created_at:D(38)},
+    {id:13,member_id:16,group_id:1,resource_type:'offer',category:'政府关系',title:'Aramco / NEOM 内部 BD 通道',description:'前 Aramco 数字化项目经理，能为 to G、to enterprise 项目做引荐和 GR',tags:['政府','能源','GR','沙特'],created_at:D(35)},
+    {id:14,member_id:18,group_id:1,resource_type:'offer',category:'品牌策划',title:'品牌视觉系统设计 VI',description:'独立设计师，做品牌全套VI、包装、社媒视觉。已服务出海茶饮和3C品牌',tags:['设计','品牌','视觉'],created_at:D(28)},
+    {id:15,member_id:22,group_id:1,resource_type:'offer',category:'数字营销',title:'中东数字投放整合',description:'Meta / Google / TikTok 中东户开通和投放代运营，可做素材本地化',tags:['数字营销','投放','中东','SEM'],created_at:D(18)},
+    {id:16,member_id:23,group_id:1,resource_type:'offer',category:'媒体资源',title:'Riyadh Daily 科技专版投稿',description:'我可直接对接编辑部，帮品牌发英语商业/科技类专题报道',tags:['媒体','沙特','PR'],created_at:D(15)},
+    {id:17,member_id:25,group_id:1,resource_type:'offer',category:'媒体资源',title:'公众号「中东商业观察」推广',description:'10万+粉公众号，专注中东出海。可接软文/品牌植入合作',tags:['媒体','内容','自媒体'],created_at:D(7)},
+    {id:18,member_id:26,group_id:1,resource_type:'offer',category:'咨询服务',title:'沙特市场进入策略咨询',description:'前埃森哲咨询顾问，做品牌进入沙特市场的Go-to-Market策略和落地执行',tags:['咨询','沙特','策略'],created_at:D(4)},
+    // 其他成员的 needs
+    {id:19,member_id:3,group_id:1,resource_type:'need',category:'政府对接',title:'需要沙特食品药监局对接',description:'客户的保健食品想进沙特市场，需要 SFDA 注册经验丰富的顾问',tags:['政府','沙特','合规'],created_at:D(45)},
+    {id:20,member_id:5,group_id:1,resource_type:'need',category:'翻译本地化',title:'活动物料中阿双语翻译',description:'下周利雅得品牌发布会，需要现场交传翻译和物料翻译。预算可谈',tags:['翻译','活动','阿拉伯语'],created_at:D(20)},
+    {id:21,member_id:6,group_id:1,resource_type:'need',category:'合作伙伴',title:'寻找中东视频制作团队',description:'需要利雅得本地的短视频拍摄和后期制作团队，做品牌广告片',tags:['视频','制作','沙特'],created_at:D(16)},
+    {id:22,member_id:17,group_id:1,resource_type:'need',category:'活动执行',title:'蜜雪冰城利雅得首店开业活动',description:'9月底利雅得首店开业，需要场地、KOL、本地媒体一条龙执行',tags:['活动','加盟','利雅得'],created_at:D(10)},
+    {id:23,member_id:19,group_id:1,resource_type:'need',category:'政府对接',title:'NEOM 项目对接通道',description:'宁德时代储能业务希望进 NEOM 项目供应链，需要内部引荐',tags:['新能源','沙特','政府'],created_at:D(8)},
+    {id:24,member_id:24,group_id:1,resource_type:'need',category:'人才招聘',title:'招阿语主播 2 名',description:'东方甄选海外直播间，急招会阿语的中国/沙特女性主播，全职或长合作',tags:['招聘','主播','阿语'],created_at:D(3)},
+
+    // ===== Group 6 「AI出海工具研习社」=====
+    // Haile (m32) 的 offer
+    {id:25,member_id:32,group_id:6,resource_type:'offer',category:'其他',title:'Manus + Claude 出海工作流模板包',description:'我自己用 Manus 搭的 10 个出海场景工作流：品牌 brief 自动生成、市场调研、阿语本地化、KOL 筛选等。免费分享给群友',tags:['AI','Manus','工作流','模板'],created_at:D(20)},
+    {id:26,member_id:32,group_id:6,resource_type:'offer',category:'其他',title:'AI×品牌策略 1v1 咨询',description:'每周开放3个咨询位，聊AI怎么提升你的品牌工作流。免费，但需要事先发我具体问题',tags:['AI','咨询','品牌','陪跑'],created_at:D(6)},
+    {id:27,member_id:32,group_id:6,resource_type:'need',category:'合作伙伴',title:'找 AI 工具评测合作',description:'打算和群友一起做「AI 工具出海实战评测」内容矩阵，找 2-3 个写作搭子',tags:['AI','内容','合作','播客'],created_at:D(1)},
+    // 其他成员
+    {id:28,member_id:33,group_id:6,resource_type:'offer',category:'其他',title:'AI Agent 落地架构咨询',description:'帮你的业务设计 LLM Agent 架构。已经帮 3 家公司从 0 搭起 Agent 流水线',tags:['AI','Agent','架构','技术'],created_at:D(36)},
+    {id:29,member_id:34,group_id:6,resource_type:'offer',category:'其他',title:'飞书 AI Skills 定制开发',description:'用飞书多维表格+AI 帮你搭定制工作流，500元/个起。批量优惠',tags:['AI','飞书','工作流'],created_at:D(32)},
+    {id:30,member_id:35,group_id:6,resource_type:'offer',category:'其他',title:'Notion AI 出海效率模板',description:'我自己卖钱的 Notion 模板免费给群友：CRM、内容日历、OKR 跟踪',tags:['AI','Notion','模板','效率'],created_at:D(28)},
+    {id:31,member_id:36,group_id:6,resource_type:'offer',category:'咨询服务',title:'LLM 部署和成本优化',description:'帮你算 LLM 调用账，能省 30-60%。可以聊 self-host vs API 决策',tags:['AI','LLM','技术','成本'],created_at:D(24)},
+    {id:32,member_id:38,group_id:6,resource_type:'offer',category:'翻译服务',title:'AI 驱动的阿语-中文-英文翻译',description:'我们的产品 TranslateMENA Beta 开放给群友免费用，专门做商业/营销文本',tags:['AI','翻译','阿语','MENA'],created_at:D(18)},
+    {id:33,member_id:40,group_id:6,resource_type:'offer',category:'咨询服务',title:'AI 出海项目融资引荐',description:'看美元基金 AI Application，关注出海 MENA / 东南亚。早期项目欢迎聊',tags:['投资','AI','VC','出海'],created_at:D(10)},
+    {id:34,member_id:42,group_id:6,resource_type:'offer',category:'其他',title:'AI 工具评测内容合作',description:'小红书12万粉 AI Coach，做 AI 工具评测/教学。接付费合作',tags:['AI','自媒体','内容','评测'],created_at:D(4)},
+    // group 6 的 needs
+    {id:35,member_id:37,group_id:6,resource_type:'need',category:'咨询服务',title:'招1位AI×品牌咨询陪跑',description:'腾讯品牌组要做AI转型，想找有实战经验的顾问 1-2 周深度 workshop',tags:['AI','品牌','咨询'],created_at:D(13)},
+    {id:36,member_id:39,group_id:6,resource_type:'need',category:'合作伙伴',title:'找中东本地化合作方',description:'AI内容工具要进中东，需要懂当地内容生态的合作伙伴',tags:['AI','本地化','中东','BD'],created_at:D(9)},
+    {id:37,member_id:41,group_id:6,resource_type:'need',category:'其他',title:'征 AI 出海中文资料',description:'我在 KAUST 做 AI×中东研究，找懂中文的合作研究伙伴',tags:['AI','学术','研究','沙特'],created_at:D(6)},
+
+    // ===== 其他群 (group 2/3/5) =====
+    {id:38,member_id:8,group_id:2,resource_type:'need',category:'合作伙伴',title:'寻找中东支付网关合作',description:'AI Agent产品要进中东，需要对接 STC Pay 和 Apple Pay 中东集成',tags:['支付','中东','技术'],created_at:D(30)},
+    {id:39,member_id:9,group_id:3,resource_type:'offer',category:'咨询服务',title:'中东电商选品数据',description:'可分享 Noon 和 Amazon 中东站近6个月热销品类数据报告，已脱敏',tags:['电商','选品','数据'],created_at:D(40)},
+    {id:40,member_id:11,group_id:5,resource_type:'offer',category:'品牌策划',title:'出海品牌0-1策略方案',description:'从品牌命名、定位、视觉到上市传播的全链路策略咨询。3周交付',tags:['品牌','策略','出海'],created_at:D(60)},
+    {id:41,member_id:31,group_id:5,resource_type:'offer',category:'品牌策划',title:'品牌 Campaign 创意服务',description:'前 W+K ECD，做品牌 big idea 和 360 整合 campaign',tags:['创意','广告','品牌'],created_at:D(50)}
+  ];
+  
+  // --- Notifications (15条，覆盖多种类型，按时间倒序) ---
+  seed.notifications=[
+    // group 1 - 作为群主收到的
+    {id:1,member_id:1,group_id:1,type:'new_match',title:'🔗 AI为你找到 1 个高匹配伙伴',content:'刘博文（星图MCN，KOL经纪）匹配你的"沙特男性运动类KOL"需求，匹配度 92%。点击查看',is_read:false,created_at:T(15)},
+    {id:2,member_id:1,group_id:1,type:'join_request',title:'📩 新的入群申请',content:'Reema Al-Harbi 申请加入「沙特品牌出海公关群」，来自前埃森哲咨询顾问，请前往管理页面审批',is_read:false,created_at:T(45)},
+    {id:3,member_id:1,group_id:1,type:'message',title:'💬 张明远 给你发了私信',content:'"Haile你好，关于你提到的 SAGIA 牌照需求，我这边可以..."',is_read:false,created_at:T(90),link:'chat:2'},
+    {id:4,member_id:1,group_id:1,type:'new_resource',title:'🆕 群里有新资源发布',content:'Reema Al-Harbi 发布了"沙特市场进入策略咨询"，与你的标签高度匹配',is_read:false,created_at:T(180)},
+    {id:5,member_id:1,group_id:1,type:'join_approved',title:'🎉 新成员加入',content:'高翔 已加入「沙特品牌出海公关群」。前阿里国际化PR，公众号"中东商业观察"主理人',is_read:true,created_at:T(420)},
+    {id:6,member_id:1,group_id:1,type:'system',title:'📊 本周群数据周报',content:'沙特品牌出海公关群本周新增5名成员，产生12次资源对接，最热门标签是「KOL合作」「政府关系」「沙特」',is_read:true,created_at:T(1440)},
+    {id:7,member_id:1,group_id:1,type:'event',title:'📅 你创建的活动即将开始',content:'「中沙品牌出海闭门会 · 第3期」7天后在利雅得 Four Seasons 举办，目前已报名 28/40 人',is_read:true,created_at:T(2880)},
+    // group 6 - AI出海工具研习社 作为群主
+    {id:8,member_id:32,group_id:6,type:'new_match',title:'🔗 跨群匹配推荐',content:'梁文心（腾讯品牌AI PM）和你的"AI×品牌策略 1v1咨询"高度匹配，AI建议你主动联系',is_read:false,created_at:T(60)},
+    {id:9,member_id:32,group_id:6,type:'message',title:'💬 王恺 给你发了私信',content:'"Haile姐，看到你的Manus工作流模板包，想要一份🥺"',is_read:false,created_at:T(150),link:'chat:33'},
+    {id:10,member_id:32,group_id:6,type:'new_resource',title:'🆕 群里有新需求',content:'陈一凡发布了「找中东本地化合作方」，你的沙特经验可能帮到他',is_read:false,created_at:T(720)},
+    {id:11,member_id:32,group_id:6,type:'announcement',title:'📢 公告已发布',content:'你刚刚发布的公告「每周三晚 8 点 AI 工作流分享会」已通知群内 12 位成员',is_read:true,created_at:T(2160)},
+    {id:12,member_id:32,group_id:6,type:'system',title:'📊 群活跃度提升',content:'AI出海工具研习社近7天活跃度+38%，新增3名成员，资源发布数翻倍',is_read:true,created_at:T(4320)},
+    // group 2 作为成员
+    {id:13,member_id:13,group_id:2,type:'new_match',title:'🔗 中东科技创业者群推荐',content:'Yusuf Chen（PalmPay MENA）和你的"AI出海品牌策略"标签匹配，建议互加',is_read:false,created_at:T(300)},
+    // group 5 作为成员
+    {id:14,member_id:14,group_id:5,type:'new_resource',title:'🆕 SophiaXu 发布了新资源',content:'前奥美策略总监发布"出海品牌0-1策略方案"，3周交付',is_read:true,created_at:T(5760)},
+    // 系统通知
+    {id:15,member_id:1,group_id:1,type:'welcome',title:'👋 欢迎升级使用 AI 资源匹配',content:'平台 AI 匹配引擎已为你识别 7 个潜在合作伙伴，本周累计推送 23 条精准匹配',is_read:true,created_at:T(10080)}
+  ];
+
+  // --- Bookmarks (Haile 的收藏：5条) ---
+  seed.bookmarks=[
+    {id:1,member_id:1,group_id:1,bookmark_type:'resource',resource_id:11,target_member_id:null,created_at:T(120)},
+    {id:2,member_id:1,group_id:1,bookmark_type:'resource',resource_id:13,target_member_id:null,created_at:T(240)},
+    {id:3,member_id:1,group_id:1,bookmark_type:'member',resource_id:null,target_member_id:26,created_at:T(360)},
+    {id:4,member_id:32,group_id:6,bookmark_type:'member',resource_id:null,target_member_id:34,created_at:T(480)},
+    {id:5,member_id:32,group_id:6,bookmark_type:'resource',resource_id:33,target_member_id:null,created_at:T(600)}
+  ];
+
+  // --- DM Messages (Haile 的私信会话：3 个对话) ---
+  seed.messages=[
+    // 会话1: Haile(1) <-> 张明远(2) - 谈 SAGIA 牌照对接
+    {id:1,from_member_id:2,to_member_id:1,group_id:1,content:'Haile你好，关于你提到的 SAGIA 牌照需求，我这边可以引荐 MISA 的负责人',is_read:true,created_at:T(95)},
+    {id:2,from_member_id:1,to_member_id:2,group_id:1,content:'明远哥太好了！客户那边时间比较急，能否本周内安排一次电话沟通？',is_read:true,created_at:T(93)},
+    {id:3,from_member_id:2,to_member_id:1,group_id:1,content:'没问题，周四下午3点北京时间方便吗？我把对方的背景资料先发你',is_read:false,created_at:T(90)},
+    // 会话2: Haile(1) <-> 刘博文(12) - KOL 资源对接
+    {id:4,from_member_id:1,to_member_id:12,group_id:1,content:'博文，我看到你有沙特本地KOL直签资源，我客户想做运动品牌 social campaign，主要找男性运动类KOL',is_read:true,created_at:T(2880)},
+    {id:5,from_member_id:12,to_member_id:1,group_id:1,content:'有！男性运动类我手上有 6 个 10-50万粉的腰部达人，可以发你 list',is_read:true,created_at:T(2820)},
+    {id:6,from_member_id:1,to_member_id:12,group_id:1,content:'太棒了，请发过来。预算 30-50万人民币，要 3-5 个达人',is_read:true,created_at:T(2810)},
+    {id:7,from_member_id:12,to_member_id:1,group_id:1,content:'OK list已发邮件了。三个推荐重点看：@Saud_Sports / @MoFitKSA / @Riyadh_Runners',is_read:true,created_at:T(2400)},
+    // 会话3: Haile(32) <-> 王恺(33) - AI 工作流模板包
+    {id:8,from_member_id:33,to_member_id:32,group_id:6,content:'Haile姐，看到你的 Manus 工作流模板包，想要一份🥺',is_read:false,created_at:T(150)},
+    // 会话4: Haile(32) <-> NinaShi(34) - 飞书 AI Skills
+    {id:9,from_member_id:34,to_member_id:32,group_id:6,content:'Haile 你周三的分享会我能来听吗？想学一下 Manus 怎么和飞书联动',is_read:true,created_at:T(1440)},
+    {id:10,from_member_id:32,to_member_id:34,group_id:6,content:'当然欢迎！Nina 你来分享一下飞书侧的玩法呀，大家一起 demo',is_read:true,created_at:T(1380)},
+    {id:11,from_member_id:34,to_member_id:32,group_id:6,content:'好呀！我准备个 15 分钟的小分享',is_read:true,created_at:T(1320)}
+  ];
+
+  // --- Announcements (Group 1 和 Group 6 的公告) ---
+  seed.announcements=[
+    {id:1,group_id:1,author_id:1,title:'📌 群内沟通公约 · 必读',content:'本群专注沙特出海资源对接。1）发布资源请按 offer/need 分类 2）禁止纯广告 3）促成对接后欢迎在群内分享案例',pinned:true,created_at:D(110)},
+    {id:2,group_id:1,author_id:1,title:'第3期「中沙品牌出海闭门会」开放报名',content:'7月18日 利雅得 Four Seasons，分享嘉宾：华为中东张明远、SABIC 阿卜杜拉、蓝标 LisaChen。限40人。报名链接群里发',pinned:true,created_at:D(7)},
+    {id:3,group_id:1,author_id:1,title:'本周AI匹配数据回顾',content:'本周 AI 系统为群内成员推送 42 条精准匹配，促成 8 次首次对话。Top 标签：KOL/政府关系/翻译',pinned:false,created_at:D(3)},
+    {id:4,group_id:6,author_id:32,title:'📌 每周三晚 8 点 AI 工作流分享会',content:'固定时段，每周一位嘉宾分享一个实战 AI 工作流。本周：Nina (飞书 AI Skills) × Haile (Manus 出海工作流)',pinned:true,created_at:D(20)},
+    {id:5,group_id:6,author_id:32,title:'群友福利：Manus 邀请码池',content:'我攒了 20 个 Manus 邀请码，需要的群友私信我，先到先得',pinned:false,created_at:D(5)}
+  ];
+
+  // --- Events (Group 1 和 Group 6 的活动) ---
+  seed.events=[
+    {id:1,group_id:1,creator_id:1,title:'中沙品牌出海闭门会 · 第3期',description:'分享 3 个中国品牌沙特落地的真实案例，含 GR/媒体/KOL 全链路打法',location:'利雅得 Four Seasons 二楼会议厅',event_date:new Date(Date.now()+7*86400000).toISOString(),max_participants:40,registration_count:28,status:'upcoming',created_at:D(15)},
+    {id:2,group_id:1,creator_id:1,title:'斋月品牌营销 Workshop',description:'2026 斋月已临近，复盘 2025 年中东品牌斋月 campaign 翻车 / 出圈案例',location:'线上 飞书会议',event_date:new Date(Date.now()+25*86400000).toISOString(),max_participants:60,registration_count:14,status:'upcoming',created_at:D(8)},
+    {id:3,group_id:6,creator_id:32,title:'AI 工作流分享会 · 第6期',description:'本期：Nina 分享飞书 AI Skills 200+ 工作流经验 + Haile 分享 Manus 出海应用',location:'线上 腾讯会议',event_date:new Date(Date.now()+2*86400000).toISOString(),max_participants:50,registration_count:31,status:'upcoming',created_at:D(6)},
+    {id:4,group_id:6,creator_id:32,title:'AI×出海创业者线下聚会 · 北京站',description:'群友们的第一次线下 meetup！自由分享 + Demo',location:'北京 中关村 SOHO',event_date:new Date(Date.now()+18*86400000).toISOString(),max_participants:30,registration_count:8,status:'upcoming',created_at:D(3)}
+  ];
+
+  // --- Join Requests (Group 1 有 2 个待审批) ---
+  seed.join_requests=[
+    {id:1,group_id:1,requester_user_token:'wx_u_new_001',requester_name:'王启明',requester_intro:'前华为终端中东部门，想加入聊聊品牌出海',invite_code:'SAUDI1',status:'pending',created_at:T(180)},
+    {id:2,group_id:1,requester_user_token:'wx_u_new_002',requester_name:'Aisha Mohammed',requester_intro:'Saudi PR agency manager, looking for China brand clients',invite_code:'SAUDI1',status:'pending',created_at:T(360)}
+  ];
+  
+  // --- Write to localStorage ---
+  localStorage.setItem('cm_groups',JSON.stringify(seed.groups));
+  localStorage.setItem('cm_members',JSON.stringify(seed.members));
+  localStorage.setItem('cm_resources',JSON.stringify(seed.resources));
+  localStorage.setItem('cm_notifications',JSON.stringify(seed.notifications));
+  localStorage.setItem('cm_join_requests',JSON.stringify(seed.join_requests||[]));
+  localStorage.setItem('cm_bookmarks',JSON.stringify(seed.bookmarks||[]));
+  localStorage.setItem('cm_conversations',JSON.stringify(seed.conversations||[]));
+  localStorage.setItem('cm_messages',JSON.stringify(seed.messages||[]));
+  localStorage.setItem('cm_announcements',JSON.stringify(seed.announcements||[]));
+  localStorage.setItem('cm_events',JSON.stringify(seed.events||[]));
+  localStorage.setItem('cm_config',JSON.stringify([CONFIG]));
+  localStorage.setItem('cm_registered','1');
+  
+  // --- Set Haile's login ---
+  localStorage.setItem('wx_token','wx_oid_haile_demo');
+  localStorage.setItem('wx_nickname','Haile');
+  localStorage.setItem('ag','1');
+  localStorage.setItem('am','1');
+}
+
+// ===== INIT =====
+window.addEventListener('DOMContentLoaded',async()=>{
+  seedDataIfEmpty();
+  if(!userToken){userToken=genUUID();localStorage.setItem('ut',userToken)}
+  userToken=localStorage.getItem('wx_token')||userToken;
+  activeGroupId=parseInt(localStorage.getItem('ag')||'0');
+  activeMemberId=parseInt(localStorage.getItem('am')||'0');
+  // 如果已有种子数据且用户是注册完成的，pre-set registrationCompleted
+  if(isWechatLoggedIn()){
+    const members=JSON.parse(localStorage.getItem('cm_members')||'[]');
+    const me=members.find(m=>m.user_token===userToken&&m.group_id===activeGroupId);
+    if(me&&me.registration_completed)registrationCompleted=true;
+  }
+  try{communityConfig=await api('/api/config')}catch(e){communityConfig={community_name:'社群资源对接平台'}}
+  document.getElementById('headerTitle').textContent=communityConfig.community_name||'社群资源对接平台';
+  document.title=communityConfig.community_name||'社群资源对接平台';
+  const p=new URLSearchParams(window.location.search);const ig=p.get('group_id'),ic=p.get('code');
+  if(ig&&ic){
+    // 邀请链接入群流程：先检查微信登录
+    if(!isWechatLoggedIn()){
+      showWechatAuthModal(()=>{processInviteLink(ig,ic)});
+    }else{
+      processInviteLink(ig,ic);
+    }
+  }
+  else if(activeGroupId){await loadGroupContext();if(!registrationCompleted){switchTab('chat')}else{switchTab('pool')}}
+  else{document.getElementById('tabBar').style.display='flex';switchTab('discovery')}
+});
+
+async function processInviteLink(ig,ic){
+  try{
+    const ginfo=await api(`/api/groups/${ig}?user_token=${userToken}`);
+    if(!ginfo.join_approval){
+      const r=await api(`/api/groups/${ig}/join`,{method:'POST',body:{user_token:userToken,invite_code:ic,requester_name:localStorage.getItem('wx_nickname')||''}});
+      activeGroupId=parseInt(ig);activeMemberId=r.member_id;
+      localStorage.setItem('ag',activeGroupId);localStorage.setItem('am',activeMemberId);
+      registrationCompleted=!r.registration_required;
+      document.getElementById('tabBar').style.display='flex';
+      await loadGroupContext();
+      showJoinSuccessModal(ginfo.name);
+      switchTab('chat');chatStep=0;
+    }else{
+      document.getElementById('tabBar').style.display='none';
+      showInviteApprovalPage(ig,ic,ginfo.name);
+    }
+  }catch(e){document.getElementById('tabBar').style.display='flex';switchTab('discovery')}
+}
+
+async function loadGroupContext(){
+  try{const g=await api(`/api/groups/${activeGroupId}?user_token=${userToken}`);currentGroup=g;const groups=await api(`/api/user/groups?user_token=${userToken}`);const all=[...groups.managed,...groups.joined];const entry=all.find(x=>x.group_id===activeGroupId);if(entry){activeMemberId=entry.member_id;localStorage.setItem('am',activeMemberId);registrationCompleted=entry.registration_completed;isGroupAdmin=!!groups.managed.find(x=>x.group_id===activeGroupId)}document.getElementById('tabBar').style.display='flex';const hg=document.getElementById('headerGroup');hg.textContent=(currentGroup?.name||'当前群组')+' ▾';}catch(e){document.getElementById('tabBar').style.display='flex';showToast('加载群组信息失败')}
+}
+
+// ===== GROUP SWITCH =====
+async function toggleGroupDropdown(){
+  const dd=document.getElementById('headerGroupDropdown');
+  if(dd.style.display==='block'){dd.style.display='none';return}
+  try{
+    const g=await api(`/api/user/groups?user_token=${userToken}`);
+    const all=[...g.managed,...g.joined];
+    dd.innerHTML=all.map(x=>`<div style="padding:8px 14px;cursor:pointer;font-size:13px;color:var(--text);${x.group_id===activeGroupId?'background:var(--primary-light);font-weight:500':''}"
+      onclick="switchPoolGroup(${x.group_id})">${escapeHtml(x.name)}${x.role==='primary_admin'?' 👑':x.role==='admin'?' ⭐':''}</div>`).join('');
+    dd.style.display='block';
+    setTimeout(()=>{document.addEventListener('click',function h(e){if(!e.target.closest('#headerGroup')){dd.style.display='none';document.removeEventListener('click',h)}})},100)
+  }catch(e){}
+}
+async function switchPoolGroup(gid){
+  document.getElementById('headerGroupDropdown').style.display='none';
+  if(gid!==activeGroupId){
+    activeGroupId=gid;localStorage.setItem('ag',gid);
+    await loadGroupContext();
+    const hg=document.getElementById('headerGroup');
+    hg.style.display='inline-block';
+    hg.textContent=(currentGroup?.name||'当前群组')+' ▾';
+    loadPool();
+  }
+}
+
+// ===== DISCOVERY =====
+async function loadDiscovery(){
+  const l=document.getElementById('discoveryList'),e=document.getElementById('discoveryEmpty');
+  // 始终显示预设分类标签
+  const ps=communityConfig.group_categories||['媒体公关','技术创业','投资理财','教育培训','电商零售','房产家居','医疗健康','法律咨询','设计创意','出海跨境','其他'];
+  document.getElementById('discoveryCategoryFilters').innerHTML=ps.map(c=>`<span class="filter-tab${discoverySelectedCategories.includes(c)?' active':''}" onclick="toggleDiscoveryCategory('${escapeHtml(c)}',this)">${escapeHtml(c)}</span>`).join('');
+  try{const s=document.getElementById('discoverySearch')?.value||'';const p=new URLSearchParams();if(s)p.set('search',s);if(discoverySelectedCategories.length)p.set('category',discoverySelectedCategories.join(','));const gs=await api('/api/groups/discover?'+p.toString());if(!gs.length){l.innerHTML='';e.style.display='block'}else{e.style.display='none';l.innerHTML=gs.map(g=>`<div class="group-card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;cursor:pointer" onclick="showJoinRequest(${g.id},'${g.name.replace(/'/g,"\\'")}')"><div style="font-weight:600">${escapeHtml(g.name)}</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${g.category} · ${g.member_count}名成员</div>${g.description?`<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${escapeHtml(g.description)}</div>`:''}</div>`).join('')}}catch(err){l.innerHTML='';e.style.display='block';e.querySelector('p').textContent='加载失败，请稍后重试'}}
+function toggleDiscoveryCategory(cat,el){const i=discoverySelectedCategories.indexOf(cat);if(i>=0){discoverySelectedCategories.splice(i,1);el.classList.remove('active')}else{discoverySelectedCategories.push(cat);el.classList.add('active')}loadDiscovery()}
+
+// ===== GROUP CREATION =====
+function populateGroupCategories(){const sel=document.getElementById('gcCatSelect');sel.innerHTML='<option value="">-- 选择分类 --</option>';const ps=communityConfig.group_categories||['媒体公关','技术创业','投资理财','教育培训','电商零售','房产家居','医疗健康','法律咨询','设计创意','出海跨境','其他'];ps.forEach(c=>{sel.innerHTML+=`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`});sel.innerHTML+='<option value="__custom__">其他（自定义）</option>';sel.value=''}
+function onGroupCatChange(){const v=document.getElementById('gcCatSelect').value;document.getElementById('gcCatCustomWrap').style.display=v==='__custom__'?'block':'none';if(v!=='__custom__'){document.getElementById('gcCat').value='';document.getElementById('gcCatSuggestion').style.display='none';suggestedCategory=null}}
+function onGroupCatInput(){clearTimeout(gcCatDebounceTimer);const v=document.getElementById('gcCat').value.trim();if(!v||v.length<2){document.getElementById('gcCatSuggestion').style.display='none';suggestedCategory=null;return}gcCatDebounceTimer=setTimeout(async()=>{try{const r=await api(`/api/groups/check-category?name=${encodeURIComponent(v)}`);if(r.has_suggestion&&r.suggestions.length){suggestedCategory=r.suggestions[0];document.getElementById('gcCatSuggestionText').textContent=r.suggestions[0];document.getElementById('gcCatSuggestion').style.display='block'}else{suggestedCategory=null;document.getElementById('gcCatSuggestion').style.display='none'}}catch(e){document.getElementById('gcCatSuggestion').style.display='none'}},400)}
+function getSelectedGroupCategory(){const sv=document.getElementById('gcCatSelect').value;if(!sv)return null;if(sv==='__custom__')return suggestedCategory||document.getElementById('gcCat').value.trim()||null;return sv}
+function useSuggestedCategory(){document.getElementById('gcCat').value=suggestedCategory;document.getElementById('gcCatSuggestion').style.display='none';suggestedCategory=null}
+function ignoreSuggestion(){document.getElementById('gcCatSuggestion').style.display='none';suggestedCategory=null}
+function onApprovalChange(){}
+function startCreateGroup(){if(!isWechatLoggedIn()){showWechatAuthModal(()=>startCreateGroup());return}populateGroupCategories();document.getElementById('groupCreatorModal').style.display='flex'}
+async function createGroup(){const n=document.getElementById('gcName').value.trim();if(!n)return showToast('请填写群组名称');const c=getSelectedGroupCategory();if(!c)return showToast('请选择群组分类');const joinApproval=document.getElementById('gcApproval').value==='1';try{const r=await api('/api/groups',{method:'POST',body:{user_token:userToken,name:n,description:document.getElementById('gcDesc').value.trim(),category:c,visibility:document.getElementById('gcVis').value,join_approval:joinApproval,base_url:API}});document.getElementById('groupCreatorModal').style.display='none';showToast('群组创建成功');activeGroupId=r.group_id;activeMemberId=r.admin_member_id;localStorage.setItem('ag',activeGroupId);localStorage.setItem('am',activeMemberId);registrationCompleted=true;isGroupAdmin=true;document.getElementById('tabBar').style.display='flex';switchTab('pool');const modal=document.getElementById('resourceModal');modal.querySelector('.modal-sheet').innerHTML=`<div class="modal-header"><span class="modal-title">✅ 群组已创建</span><button class="modal-close" onclick="document.getElementById('resourceModal').style.display='none'">✕</button></div><p style="margin-bottom:12px">将以下链接分享到微信群，邀请成员加入：</p><div style="background:var(--bg);padding:12px;border-radius:8px;word-break:break-all;font-size:var(--font-size-sm);margin-bottom:12px" id="inviteLinkText">${r.invite_link}</div><button class="btn btn-primary btn-block btn-sm" onclick="navigator.clipboard?.writeText(document.getElementById('inviteLinkText')?.textContent||'').then(()=>showToast('已复制'))">📋 复制邀请链接</button>`;modal.style.display='flex';loadGroupContext().catch(()=>{})}catch(e){showToast('创建失败：'+e.message)}}
+
+// ===== JOIN =====
+function showJoinRequest(gid,gname){if(!isWechatLoggedIn()){showWechatAuthModal(()=>showJoinRequest(gid,gname));return}joinRequestGroupId=gid;document.getElementById('joinRequestModal').style.display='flex'}
+async function submitJoinRequest(){const n=document.getElementById('jrName').value.trim();if(!n)return showToast('请填写姓名');try{await api(`/api/groups/${joinRequestGroupId}/request`,{method:'POST',body:{requester_name:n,requester_intro:document.getElementById('jrIntro').value.trim(),user_token:userToken}});document.getElementById('joinRequestModal').style.display='none';showToast('申请已提交')}catch(e){}}
+
+// ===== INVITE LINK JOIN =====
+function showJoinSuccessModal(gname){
+  const modal=document.getElementById('resourceModal');
+  modal.querySelector('.modal-sheet').innerHTML=`<div class="modal-header"><span class="modal-title">🎉 已加入「${escapeHtml(gname)}」</span><button class="modal-close" onclick="document.getElementById('resourceModal').style.display='none'">✕</button></div><p style="margin-bottom:12px">欢迎加入！AI助手将引导你完成注册。</p><button class="btn btn-primary btn-block" onclick="document.getElementById('resourceModal').style.display='none'">开始</button>`;
+  modal.style.display='flex';
+}
+let inviteJoinGid=null,inviteJoinCode=null;
+function showInviteApprovalPage(gid,code,gname){
+  inviteJoinGid=gid;inviteJoinCode=code;
+  document.getElementById('pageHeader').style.display='none';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  // 显示专用的邀请入群页面
+  document.getElementById('discoveryList').innerHTML='';
+  document.getElementById('discoveryEmpty').style.display='none';
+  const page=document.getElementById('page-discovery');
+  page.classList.add('active');
+  page.innerHTML=`<div style="padding:40px 20px;text-align:center">
+    <div style="font-size:48px;margin-bottom:16px">🔐</div>
+    <h2 style="margin-bottom:8px">加入「${escapeHtml(gname)}」</h2>
+    <p style="font-size:var(--font-size-sm);color:var(--text-secondary);margin-bottom:24px">该群组需要群主审批，请填写以下信息</p>
+    <div style="text-align:left">
+      <div class="form-group"><label class="form-label required">你的姓名</label><input class="form-input" id="inviteName" placeholder="请输入姓名"></div>
+      <div class="form-group"><label class="form-label">申请理由 / 自我介绍</label><textarea class="form-textarea" id="inviteIntro" rows="4" placeholder="介绍一下你是谁，为什么想加入这个群"></textarea></div>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="submitInviteJoin()">提交申请</button>
+    <p style="font-size:11px;color:var(--text-light);margin-top:12px">提交后等待群主审批，审批通过后你会收到通知</p>
+  </div>`;
+}
+async function submitInviteJoin(){
+  const name=document.getElementById('inviteName').value.trim();
+  if(!name)return showToast('请填写姓名');
+  try{
+    const r=await api(`/api/groups/${inviteJoinGid}/join`,{method:'POST',body:{user_token:userToken,invite_code:inviteJoinCode,requester_name:name,requester_intro:document.getElementById('inviteIntro').value.trim()}});
+    // 恢复发现页
+    document.getElementById('page-discovery').innerHTML='<div id="discoveryList"></div><div id="discoveryEmpty" class="empty-state"><div class="icon">🔍</div><p>暂无公开群组</p></div>';
+    const modal=document.getElementById('resourceModal');
+    modal.querySelector('.modal-sheet').innerHTML=`<div class="modal-header"><span class="modal-title">✅ 申请已提交</span><button class="modal-close" onclick="document.getElementById('resourceModal').style.display='none'">✕</button></div><p style="margin-bottom:12px">你的入群申请已提交，等待群主审批。审批通过后你会收到通知。</p><button class="btn btn-primary btn-block" onclick="document.getElementById('resourceModal').style.display='none';document.getElementById('tabBar').style.display='flex';switchTab('discovery')">确定</button>`;
+    modal.style.display='flex';
+  }catch(e){}
+}
+
+// ===== POOL =====
+async function loadPoolPage(){const ng=document.getElementById('poolNoGroup'),ct=document.getElementById('poolContent');if(!hasActiveGroup()){ng.style.display='block';ct.style.display='none';return}ng.style.display='none';ct.style.display='block';loadPool()}
+function onPoolGroupChange(){}
+function filterPool(type,el){currentPoolType=type;document.querySelectorAll('#poolTypeFilters .filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');loadPool()}
+function filterPoolByCat(cat,el){if(currentPoolCat===cat){currentPoolCat=null;el.classList.remove('active')}else{document.querySelectorAll('#poolCategoryFilters .filter-tab').forEach(t=>t.classList.remove('active'));currentPoolCat=cat;el.classList.add('active')}loadPool()}
+async function loadPool(){if(!hasActiveGroup())return;const s=document.getElementById('poolSearch')?.value||'',p=new URLSearchParams();p.set('user_token',userToken);if(s)p.set('search',s);if(currentPoolType!=='all')p.set('resource_type',currentPoolType);try{const r=await api(`/api/groups/${activeGroupId}/resources?${p.toString()}`);const l=document.getElementById('poolList'),e=document.getElementById('poolEmpty');let data=r;if(currentPoolCat){data=r.filter(x=>x.category===currentPoolCat)}const dbCats=[...new Set(r.map(x=>x.category).filter(Boolean))];const preCats=communityConfig.offer_categories||[];const allCats=[...new Set([...preCats,...dbCats])];document.getElementById('poolCategoryFilters').innerHTML=allCats.slice(0,12).map(c=>`<span class="filter-tab${currentPoolCat===c?' active':''}" onclick="filterPoolByCat('${escapeHtml(c)}',this)">${escapeHtml(c)}</span>`).join('');if(!data.length){l.innerHTML='';e.style.display='block';return}e.style.display='none';l.innerHTML=data.map(x=>`<div class="resource-card" style="padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer" onclick="viewMember(${x.member.id})"><span class="resource-type ${x.resource_type==='offer'?'type-offer':'type-need'}">${x.resource_type==='offer'?'可提供':'需求'}</span>${x.category?`<span class="tag tag-secondary">${x.category}</span>`:''}<div style="font-weight:500;margin-top:6px">${x.title}</div>${x.description?`<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${x.description}</div>`:''}<div style="display:flex;align-items:center;margin-top:8px;gap:6px"><div class="avatar" style="width:24px;height:24px;font-size:12px">${x.member.name[0]}</div><span style="font-size:12px;color:var(--text-secondary)">${x.member.name}·${x.member.company||''}</span></div></div>`).join('')}catch(e){}}
+async function viewMember(mid){try{const m=await api(`/api/groups/${activeGroupId}/members/${mid}?user_token=${userToken}`);document.getElementById('resourceModal').querySelector('.modal-sheet').innerHTML=`<div class="modal-header"><span class="modal-title">${m.name}的主页</span><button class="modal-close" onclick="document.getElementById('resourceModal').style.display='none'">✕</button></div><div style="text-align:center;margin-bottom:16px"><div class="avatar" style="width:60px;height:60px;font-size:24px;margin:0 auto 8px">${m.name[0]}</div><div style="font-weight:600;font-size:var(--font-size-lg)">${m.name}</div><div style="color:var(--text-secondary);font-size:var(--font-size-sm)">${m.company||''}·${m.position||''}</div></div><div style="margin-bottom:8px">${(m.tags||[]).map(t=>`<span class="tag tag-primary">${t}</span>`).join('')}</div>${m.intro?`<p style="color:var(--text-secondary);font-size:var(--font-size-sm);margin-bottom:12px">${m.intro}</p>`:''}<div style="margin-bottom:16px"><div style="font-weight:500;margin-bottom:8px">💎 可提供</div>${m.offers?.length?m.offers.map(o=>`<div style="padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px"><span class="resource-type type-offer">可提供</span><span class="tag tag-secondary">${o.category}</span><div style="font-weight:500;margin-top:4px">${o.title}</div>${o.description?`<div style="font-size:12px;color:var(--text-secondary)">${o.description}</div>`:''}</div>`).join(''):'<p style="font-size:12px;color:var(--text-light)">暂无</p>'}</div><div><div style="font-weight:500;margin-bottom:8px">🎯 需求</div>${m.needs?.length?m.needs.map(n=>`<div style="padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px"><span class="resource-type type-need">需求</span><span class="tag tag-secondary">${n.category}</span><div style="font-weight:500;margin-top:4px">${n.title}</div>${n.description?`<div style="font-size:12px;color:var(--text-secondary)">${n.description}</div>`:''}</div>`).join(''):'<p style="font-size:12px;color:var(--text-light)">暂无</p>'}</div>`;document.getElementById('resourceModal').style.display='flex'}catch(e){}}
+
+// ===== PROFILE =====
+async function loadProfile(){updateProfileLoginUI();try{const g=await api(`/api/user/groups?user_token=${userToken}`);const ml=document.getElementById('managedGroupsList'),jl=document.getElementById('joinedGroupsList');ml.innerHTML=g.managed.length?g.managed.map(x=>`<div class="member-item" onclick="openManageGroup(${x.group_id})"><div class="avatar">👑</div><div class="member-info"><div class="member-name">${escapeHtml(x.name)}${x.group_id===activeGroupId?' <span class="tag tag-primary">当前</span>':''}</div><div class="member-company">${x.category}·${x.member_count}成员·${x.role==='primary_admin'?'主管理员':'管理员'}</div></div></div>`).join(''):'<p style="font-size:12px;color:var(--text-light)">暂无</p>';jl.innerHTML=g.joined.length?g.joined.map(x=>`<div class="member-item" onclick="switchToGroup(${x.group_id})"><div class="avatar">${x.name[0]}</div><div class="member-info"><div class="member-name">${escapeHtml(x.name)}${x.group_id===activeGroupId?' <span class="tag tag-primary">当前</span>':''}</div><div class="member-company">${x.category}·${x.member_count}成员</div></div></div>`).join(''):'<p style="font-size:12px;color:var(--text-light)">暂无</p>'}catch(e){}}
+async function switchToGroup(gid){activeGroupId=gid;localStorage.setItem('ag',gid);await loadGroupContext();switchTab(registrationCompleted?'pool':'chat')}
+
+// ===== MANAGE =====
+async function openManageGroup(gid){manageGroupId=gid;switchTab('manage')}
+async function loadManagePage(){if(!manageGroupId)return;try{const g=await api(`/api/groups/${manageGroupId}?user_token=${userToken}`);document.getElementById('mgName').value=g.name||'';document.getElementById('mgDesc').value=g.description||'';document.getElementById('mgCat').value=g.category||'';document.getElementById('mgQR').value=g.qr_code_url||'';if(g.qr_code_url){document.getElementById('mgQRStatus').textContent='✓ 已上传';document.getElementById('mgQRPreview').style.display='block';document.getElementById('mgQRImg').src=g.qr_code_url;}else{document.getElementById('mgQRStatus').textContent='未上传';document.getElementById('mgQRPreview').style.display='none';};const ilink=API+'/?group_id='+manageGroupId+'&code='+(g.invite_code||'');document.getElementById('mgInviteLink').innerHTML=`<div style="background:var(--bg);padding:10px;border-radius:8px;word-break:break-all;font-size:12px;margin-bottom:4px">${ilink}</div><button class="btn btn-sm btn-primary" onclick="navigator.clipboard?.writeText('${ilink.replace(/'/g,"\\'")}').then(()=>showToast('已复制'))">📋 复制邀请链接</button>`;try{const reqs=await api(`/api/groups/${manageGroupId}/requests?user_token=${userToken}`);document.getElementById('mgRequests').innerHTML=reqs.length?reqs.map(r=>`<div class="request-card"><div style="font-weight:500">${r.requester_name}</div><div style="font-size:12px;color:var(--text-secondary);margin:4px 0">${r.requester_intro||'无'}</div><div style="display:flex;gap:8px"><button class="btn btn-sm btn-primary" onclick="approveReq(${r.id})">通过</button><button class="btn btn-sm btn-ghost" onclick="rejectReq(${r.id})">拒绝</button></div></div>`).join(''):'<p style="font-size:12px;color:var(--text-light)">暂无待审核</p>'}catch(e){}try{const ms=await api(`/api/groups/${manageGroupId}/admin/members?user_token=${userToken}`);document.getElementById('mgMembers').innerHTML=ms.map(m=>`<div class="member-item"><div class="avatar">${m.name[0]}</div><div class="member-info"><div class="member-name">${m.name}${!m.registration_completed?' <span style="font-size:11px;color:var(--danger)">未注册</span>':''}</div><div class="member-company">${m.company||'未填写'}·${m.resource_count}项资源</div></div></div>`).join('')||'<p style="font-size:12px;color:var(--text-light)">暂无成员</p>'}catch(e){}}catch(e){}}
+async function saveManageInfo(){try{await api(`/api/groups/${manageGroupId}`,{method:'PUT',body:{user_token:userToken,name:document.getElementById('mgName').value.trim(),description:document.getElementById('mgDesc').value.trim(),category:document.getElementById('mgCat').value.trim(),qr_code_url:document.getElementById('mgQR').value.trim()}});showToast('已保存')}catch(e){}}
+async function uploadQRCode(){
+  const file=document.getElementById('mgQRFile').files[0];
+  if(!file)return;
+  document.getElementById('mgQRStatus').textContent='上传中...';
+  const fd=new FormData();fd.append('file',file);
+  try{
+    document.getElementById('mgQRStatus').textContent='✓ 已上传（本地模式）';
+    document.getElementById('mgQR').value='/placeholder-qr.png';
+    document.getElementById('mgQRPreview').style.display='block';
+    document.getElementById('mgQRImg').src='/placeholder-qr.png';
+  }catch(e){document.getElementById('mgQRStatus').textContent='上传失败'}
+}
+async function approveReq(rid){try{await api(`/api/groups/${manageGroupId}/requests/${rid}`,{method:'PUT',body:{user_token:userToken,status:'approved'}});showToast('已通过');loadManagePage()}catch(e){}}
+async function rejectReq(rid){try{await api(`/api/groups/${manageGroupId}/requests/${rid}`,{method:'PUT',body:{user_token:userToken,status:'rejected'}});showToast('已拒绝');loadManagePage()}catch(e){}}
+
+// ===== CHATBOT =====
+async function loadGlobalChat(){
+  const msgs=document.getElementById('chatMessages');msgs.innerHTML='';
+  msgs.innerHTML+=`<div class="chat-msg bot">👋 你好！我是社群AI助手。<br><br>当前你还没有加入任何群组。告诉我关于你的信息，我会帮你找到合适的社群～<br><br>你可以告诉我：<br>• 你在什么行业工作？<br>• 你想找什么样的资源或人脉？<br>• 你有什么经验或资源可以分享？</div>`;
+  chatStep=-1;chatMemberId=0;
+}
+function loadChat(){if(!hasActiveGroup())return;chatMemberId=activeMemberId;const msgs=document.getElementById('chatMessages');if(msgs.innerHTML===''){
+  if(registrationCompleted){
+    // 已注册：显示 AI 助手对话历史样例
+    msgs.innerHTML=`
+<div class="chat-msg bot">🌟 早！Haile，我是「${(currentGroup?.name||'社群')}」的 AI 助手。<br><br>本周我帮你跟踪到 <b>3 条新匹配</b>，2 条来自群内、1 条来自跨群。需要我帮你 review 吗？</div>
+<div class="chat-msg bot" style="font-size:13px;background:#FFF8E1;border-left:3px solid #FFC107;padding-left:10px">💡 提示：你可以问我「群里有多少人」「找翻译」「谁做沙特KOL」「我最近需要设计师」「帮我重新匹配」</div>
+<div class="chat-msg user">谁做沙特运动类KOL？</div>
+<div class="chat-msg bot">为你找到 <b>2 位</b> 群内成员：<br>• <b>刘博文</b>（蓝色光标 Saudi Office）·中东本地KOL直签，腰部男性运动达人 6 位<br>• <b>张子轩</b>（独立PR）·有 Saud_Sports / MoFitKSA 历史 case<br><br>需要我把你的需求 brief 转给他们吗？</div>
+<div class="chat-msg user">先帮我整理一下双方背景，我自己发</div>
+<div class="chat-msg bot">好的，已生成 brief：<br>• 刘博文：2024起进入沙特KOL直签市场，签约 30+ 男性运动类账号，单条报价 $800-3000<br>• 张子轩：服务过李宁/安踏中东项目，擅长 launch campaign 整套打法<br><br>建议优先聊刘博文（资源更直接）。要不要我把他的微信发你？</div>
+<div class="chat-msg bot" style="font-size:12px;color:#888;margin-top:12px">—— 14 分钟前 ——</div>
+<div class="chat-msg bot">📊 本周对接小结<br>• 新增成员：3 位（含 1 位 SABIC 方向）<br>• 资源新增：8 条（4 offer / 4 need）<br>• 促成首次对话：5 对<br>• Top 热门标签：#沙特 #KOL #政府关系</div>`;
+    chatStep=-1;
+  }else{
+    msgs.innerHTML=`<div class="chat-msg bot">🌟 嗨！欢迎来到 <b>${(currentGroup?.name||'社群')}</b> ～<br><br>我是你的AI小助手，会陪你完成注册、帮你找到最合适的小伙伴！<br><br>准备好了吗？<br><button class="btn btn-primary btn-sm" onclick="startChatbotOnboarding()" style="margin-top:8px">✨ 开始自我介绍</button></div>`;
+    chatStep=-1;
+  }
+}if(!registrationCompleted&&!activeMemberId){}}function startChatbotOnboarding(){chatStep=0;chatMemberId=activeMemberId;const msgs=document.getElementById('chatMessages');if(msgs.innerHTML==='')sendChatMessage(true);else sendChatMessage(true)}
+async function sendChatMessage(isFirst){
+  const input=document.getElementById('chatInput');const msg=isFirst?'开始':input.value.trim();if(!msg)return;if(!isFirst)input.value='';
+  const msgs=document.getElementById('chatMessages');if(!isFirst)msgs.innerHTML+=`<div class="chat-msg user">${escapeHtml(msg)}</div>`;
+  msgs.innerHTML+='<div class="chat-msg typing"><div class="spinner" style="width:14px;height:14px;margin-right:6px"></div>思考中...</div>';msgs.scrollTop=msgs.scrollHeight;
+  try{const resp=await api('/api/chat/message',{method:'POST',body:{user_token:userToken,group_id:activeGroupId||0,member_id:chatMemberId||0,message:msg,step:chatStep}});msgs.querySelector('.typing')?.remove();msgs.innerHTML+=`<div class="chat-msg bot">${escapeHtml(resp.reply).replace(/\n/g,'<br>')}</div>`;msgs.scrollTop=msgs.scrollHeight;
+  if(resp.member_id&&resp.member_id>0)chatMemberId=resp.member_id;
+  if(resp.mode==='onboarding'){if(resp.done){registrationCompleted=true;activeMemberId=chatMemberId;localStorage.setItem('am',activeMemberId);msgs.innerHTML+='<div class="chat-done">✅ 注册完成！</div>';if(resp.auto_match_results?.length){resp.auto_match_results.forEach(m=>{msgs.innerHTML+=`<div class="chat-msg bot" style="font-size:12px">与 <b>${m.member.name}</b> 匹配度 ${Math.round(m.score*100)}%</div>`})}if(resp.cross_group_recs?.length){resp.cross_group_recs.forEach(g=>{msgs.innerHTML+=`<div class="chat-msg bot" style="font-size:12px"><b>${escapeHtml(g.name)}</b>(${escapeHtml(g.category)})<br><button class="btn btn-sm btn-primary" onclick="requestJoinGroup(${g.id},'${escapeHtml(g.name).replace(/'/g,"\\'")}')" style="margin-top:4px">申请加入</button></div>`})}await loadGroupContext()}else{chatStep=resp.next_step>=0?resp.next_step:chatStep}}else{chatStep=-1;if(resp.profile_updated)await loadGroupContext()}document.getElementById('chatInput').focus()}catch(e){msgs.querySelector('.typing')?.remove();msgs.innerHTML+=`<div class="chat-msg bot">抱歉：${escapeHtml(e.message)}</div>`}
+}
+function requestJoinGroup(gid,gname){document.getElementById('chatMessages').innerHTML+=`<div class="chat-msg user">申请加入「${escapeHtml(gname)}」</div>`;showJoinRequest(gid,gname)}
+
+// ===== FLOATING CHAT BUTTON =====
+function openFABChat(){switchTab('chat');window.scrollTo(0,document.body.scrollHeight)}
+
+// ===== MANAGE TABS =====
+function switchManageTab(tab,el){
+  document.querySelectorAll('#manageTabs .admin-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['info','announcements','events','dashboard'].forEach(t=>{
+    const div=document.getElementById('manageTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(div)div.style.display=t===tab?'block':'none';
+  });
+  if(tab==='announcements')loadAnnouncements();
+  if(tab==='events')loadEvents();
+  if(tab==='dashboard')loadDashboard();
+}
+
+// ===== NOTIFICATIONS =====
+async function loadNotifications(){
+  const l=document.getElementById('notifList2'),e=document.getElementById('notifEmpty2'),mb=document.getElementById('markAllBtn');
+  try{
+    const params=`user_token=${userToken}`+(activeGroupId>0?`&group_id=${activeGroupId}`:'');
+    const d=await api('/api/notifications?'+params);
+    if(!d.notifications.length){l.innerHTML='';e.style.display='block';mb.style.display='none';document.getElementById('notifBadge').style.display='none';return}
+    e.style.display='none';
+    mb.style.display='inline-block';
+    if(d.unread_count>0){const b=document.getElementById('notifBadge');b.style.display='flex';b.textContent=d.unread_count>99?'99+':d.unread_count}
+    else document.getElementById('notifBadge').style.display='none';
+    l.innerHTML=d.notifications.map(n=>`<div class="notif-item${n.is_read?'':' unread'}" onclick="markNotifRead(${n.id},'${n.link||''}')">
+      ${!n.is_read?'<div class="notif-dot"></div>':''}
+      <div class="notif-body"><div class="notif-title">${escapeHtml(n.title)}</div>
+      ${n.content?`<div class="notif-content">${escapeHtml(n.content)}</div>`:''}
+      <div class="notif-time">${n.created_at?.slice(0,16)||''}</div></div></div>`).join('');
+  }catch(e){}
+}
+async function markNotifRead(nid,link){
+  await api(`/api/notifications/${nid}/read`,{method:'PUT'});
+  loadNotifications();
+  if(link&&link.startsWith('chat:')){
+    const pid=parseInt(link.split(':')[1]);
+    if(pid){switchMsgSubTab('conversations',document.querySelector('#msgSubTabs [data-subtab="conversations"]'));openChat(pid)}
+  }
+}
+async function markAllNotifsRead(){
+  await api('/api/notifications/read-all',{method:'PUT',body:{user_token:userToken,group_id:activeGroupId}});
+  loadNotifications();
+}
+setInterval(()=>{if(document.getElementById('page-messages')?.classList.contains('active')&&currentMsgSubTab==='notifications')loadNotifications()},30000);
+
+// ===== BOOKMARKS =====
+let currentBookmarkFilter='all';
+function filterBookmarks(type,el){currentBookmarkFilter=type;document.querySelectorAll('#bookmarkTypeFilters .filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');loadBookmarks()}
+async function loadBookmarks(){
+  const l=document.getElementById('bookmarkList'),e=document.getElementById('bookmarkEmpty');
+  try{
+    const bm=await api(`/api/bookmarks?user_token=${userToken}&group_id=${activeGroupId||0}`);
+    let data=bm.bookmarks;
+    if(currentBookmarkFilter!=='all')data=data.filter(x=>x.bookmark_type===currentBookmarkFilter);
+    if(!data.length){l.innerHTML='';e.style.display='block';return}
+    e.style.display='none';
+    l.innerHTML=data.map(b=>{
+      if(b.bookmark_type==='resource'&&b.resource){
+        const r=b.resource;
+        return `<div class="bookmark-card" onclick="viewMember(${r.member?.id})"><span class="resource-type ${r.resource_type==='offer'?'type-offer':'type-need'}">${r.resource_type==='offer'?'可提供':'需求'}</span><div class="bookmark-info"><div style="font-weight:500;font-size:14px">${escapeHtml(r.title)}</div><div style="font-size:12px;color:var(--text-secondary)">${r.member?.name||''} · ${r.category||''}</div></div><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();removeBookmark(${b.id})">✕</button></div>`;
+      }else if(b.bookmark_type==='member'&&b.target_member){
+        const m=b.target_member;
+        return `<div class="bookmark-card" onclick="viewMember(${m.id})"><div class="avatar">${m.name[0]}</div><div class="bookmark-info"><div style="font-weight:500;font-size:14px">${escapeHtml(m.name)}</div><div style="font-size:12px;color:var(--text-secondary)">${m.company||''} · ${m.position||''}</div></div><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();removeBookmark(${b.id})">✕</button></div>`;
+      }
+      return '';
+    }).join('');
+  }catch(e){}
+}
+async function addBookmark(type,resourceId,targetMemberId){
+  try{await api('/api/bookmarks',{method:'POST',body:{member_id:activeMemberId,group_id:activeGroupId,bookmark_type:type,resource_id:resourceId||null,target_member_id:targetMemberId||null}});showToast('已收藏')}catch(e){}
+}
+async function removeBookmark(bid){
+  try{await api('/api/bookmarks/'+bid,{method:'DELETE'});loadBookmarks();showToast('已取消')}catch(e){}
+}
+
+// ===== MESSAGES (DM) =====
+let dmPartnerId=null,dmPartnerName='';
+function switchMsgSubTab(subtab,el){
+  currentMsgSubTab=subtab;
+  document.querySelectorAll('#msgSubTabs .filter-tab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.getElementById('msgNotificationsContent').style.display=subtab==='notifications'?'block':'none';
+  document.getElementById('msgConversationsContent').style.display=subtab==='conversations'?'block':'none';
+  if(subtab==='notifications')loadNotifications();
+  if(subtab==='conversations')loadConversations();
+}
+async function loadConversations(){
+  document.getElementById('messagesConvView2').style.display='block';
+  document.getElementById('messagesChatView2').style.display='none';
+  const l=document.getElementById('convList2'),e=document.getElementById('convEmpty2');
+  try{
+    const d=await api(`/api/messages/conversations?user_token=${userToken}&group_id=${activeGroupId||0}`);
+    if(!d.conversations.length){l.innerHTML='';e.style.display='block';return}
+    e.style.display='none';
+    l.innerHTML=d.conversations.map(c=>`<div class="conv-item" onclick="openChat(${c.partner.id},'${escapeHtml(c.partner.name)}')">
+      <div class="conv-avatar">${c.partner.name[0]}</div><div class="conv-body"><div class="conv-name">${escapeHtml(c.partner.name)}${c.unread_count?` <span class="conv-badge">${c.unread_count}</span>`:''}</div><div class="conv-preview">${escapeHtml(c.last_message||'')}</div></div></div>`).join('');
+  }catch(e){}
+}
+async function openChat(pid,pname){
+  dmPartnerId=pid;dmPartnerName=pname||'';
+  document.getElementById('messagesConvView2').style.display='none';
+  document.getElementById('messagesChatView2').style.display='block';
+  document.getElementById('chatPartnerName2').textContent=dmPartnerName;
+  await refreshDMs();
+}
+function closeChatView(){dmPartnerId=null;loadConversations()}
+async function refreshDMs(){
+  const container=document.getElementById('dmMessages2');
+  try{
+    const d=await api(`/api/messages/${dmPartnerId}?user_token=${userToken}&member_id=${activeMemberId}`);
+    container.innerHTML=d.messages.map(m=>`<div class="msg-bubble ${m.from_member_id===activeMemberId?'sent':'received'}">${escapeHtml(m.content)}<div style="font-size:10px;color:${m.from_member_id===activeMemberId?'rgba(255,255,255,.6)':'var(--text-light)'};margin-top:2px">${m.created_at?.slice(11,16)||''}</div></div>`).join('');
+    container.scrollTop=container.scrollHeight;
+  }catch(e){}
+}
+async function sendDM(){
+  const input=document.getElementById('dmInput2');
+  const msg=input.value.trim();if(!msg)return;input.value='';
+  try{
+    await api('/api/messages',{method:'POST',body:{from_member_id:activeMemberId,to_member_id:dmPartnerId,group_id:activeGroupId,content:msg}});
+    refreshDMs();
+  }catch(e){}
+}
+
+// ===== ANNOUNCEMENTS =====
+function showCreateAnnouncement(){
+  document.getElementById('amTitle').textContent='发布公告';
+  document.getElementById('amName').value='';
+  document.getElementById('amContent').value='';
+  document.getElementById('amPinned').checked=false;
+  document.getElementById('announcementModal').style.display='flex';
+}
+async function createAnnouncement(){
+  const title=document.getElementById('amName').value.trim();
+  if(!title)return showToast('标题不能为空');
+  try{
+    await api(`/api/groups/${manageGroupId}/announcements`,{method:'POST',body:{user_token:userToken,title:title,content:document.getElementById('amContent').value.trim(),pinned:document.getElementById('amPinned').checked}});
+    document.getElementById('announcementModal').style.display='none';
+    showToast('公告已发布');
+    loadAnnouncements();
+  }catch(e){}
+}
+async function loadAnnouncements(){
+  const container=document.getElementById('mgAnnouncements');
+  try{
+    const d=await api(`/api/groups/${manageGroupId}/announcements?user_token=${userToken}`);
+    if(!d.length){container.innerHTML='<div class="empty-state"><div class="icon">📢</div><p>暂无公告</p></div>';return}
+    container.innerHTML=d.map(a=>`<div class="announcement-card${a.pinned?' pinned':''}" onclick="viewAnnouncementDetail(${a.id})">
+      <div style="display:flex;justify-content:space-between"><span style="font-weight:500">${a.pinned?'📌 ':''}${escapeHtml(a.title)}</span><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();deleteAnnouncement(${a.id})">删除</button></div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${a.author?.name||''} · ${a.created_at?.slice(0,16)||''}</div></div>`).join('');
+  }catch(e){}
+}
+function viewAnnouncementDetail(aid){showToast('查看详情...')}
+async function deleteAnnouncement(aid){
+  try{await api(`/api/groups/${manageGroupId}/announcements/${aid}`,{method:'DELETE',body:{user_token:userToken}});showToast('已删除');loadAnnouncements()}catch(e){}
+}
+
+// ===== EVENTS =====
+function showCreateEvent(){
+  document.getElementById('evTitle').textContent='创建活动';
+  document.getElementById('evName').value='';document.getElementById('evDesc').value='';
+  document.getElementById('evLocation').value='';document.getElementById('evDate').value='';
+  document.getElementById('evMax').value='0';
+  document.getElementById('eventModal').style.display='flex';
+}
+async function createEvent(){
+  const title=document.getElementById('evName').value.trim();
+  if(!title)return showToast('活动名称不能为空');
+  try{
+    await api(`/api/groups/${manageGroupId}/events`,{method:'POST',body:{user_token:userToken,title:title,description:document.getElementById('evDesc').value.trim(),location:document.getElementById('evLocation').value.trim(),event_date:document.getElementById('evDate').value,max_participants:parseInt(document.getElementById('evMax').value)||0}});
+    document.getElementById('eventModal').style.display='none';
+    showToast('活动已创建');loadEvents();
+  }catch(e){}
+}
+async function loadEvents(){
+  const container=document.getElementById('mgEvents');
+  try{
+    const d=await api(`/api/groups/${manageGroupId}/events?user_token=${userToken}`);
+    const events=Array.isArray(d)?d:(d.events||[]);
+    if(!events.length){container.innerHTML='<div class="empty-state"><div class="icon">📅</div><p>暂无活动</p></div>';return}
+    container.innerHTML=events.map(e=>`<div class="event-card">
+      <div style="display:flex;justify-content:space-between"><span style="font-weight:500">${escapeHtml(e.title)}</span><span class="tag tag-primary">${e.status==='upcoming'?'即将开始':e.status}</span></div>
+      ${e.description?`<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${escapeHtml(e.description)}</div>`:''}
+      <div class="event-meta"><span>📍 ${escapeHtml(e.location||'待定')}</span><span>🕐 ${e.event_date?.slice(0,16)||'待定'}</span><span>👥 ${e.registration_count}${e.max_participants?`/${e.max_participants}`:''}人</span></div>
+      <div style="margin-top:8px"><button class="btn btn-sm btn-ghost" onclick="deleteEvent(${e.id})" style="color:var(--danger)">删除</button></div></div>`).join('');
+  }catch(e){}
+}
+async function deleteEvent(eid){
+  try{await api(`/api/groups/${manageGroupId}/events/${eid}`,{method:'DELETE',body:{user_token:userToken}});showToast('已删除');loadEvents()}catch(e){}
+}
+
+// ===== DASHBOARD =====
+async function loadDashboard(){
+  const container=document.getElementById('mgDashboard');
+  container.innerHTML='<div style="text-align:center;padding:40px"><div class="spinner" style="margin:0 auto"></div><p style="font-size:12px;color:var(--text-secondary);margin-top:8px">加载数据...</p></div>';
+  try{
+    const d=await api(`/api/groups/${manageGroupId}/admin/dashboard?user_token=${userToken}&days=30`);
+    const s=d.summary;
+    container.innerHTML=`
+      <div class="section-title">📊 核心指标（近30天）</div>
+      <div class="dashboard-grid">
+        <div class="dash-stat"><div class="dash-value">${s.total_members}</div><div class="dash-label">总成员</div></div>
+        <div class="dash-stat"><div class="dash-value">${s.registration_rate}</div><div class="dash-label">注册率</div></div>
+        <div class="dash-stat"><div class="dash-value">${s.total_offers}</div><div class="dash-label">可提供资源</div></div>
+        <div class="dash-stat"><div class="dash-value">${s.total_needs}</div><div class="dash-label">需求资源</div></div>
+        <div class="dash-stat"><div class="dash-value">${s.total_matches}</div><div class="dash-label">匹配次数</div></div>
+        <div class="dash-stat"><div class="dash-value">${s.active_members_30d}</div><div class="dash-label">30天活跃成员</div></div>
+      </div>
+      ${renderChart('成员新增趋势',d.member_growth)}
+      ${renderChart('资源新增趋势',d.resource_growth)}
+      <div class="dash-chart-container"><div class="dash-chart-title">📂 资源分类分布</div>
+        <div class="dashboard-grid">
+          <div><div style="font-size:12px;font-weight:500;margin-bottom:6px">可提供</div>${d.offer_categories.slice(0,5).map(c=>`<div style="font-size:11px;color:var(--text-secondary);margin-bottom:2px">${c.category}: ${c.count}</div>`).join('')||'<div style="font-size:11px;color:var(--text-light)">暂无</div>'}</div>
+          <div><div style="font-size:12px;font-weight:500;margin-bottom:6px">需求中</div>${d.need_categories.slice(0,5).map(c=>`<div style="font-size:11px;color:var(--text-secondary);margin-bottom:2px">${c.category}: ${c.count}</div>`).join('')||'<div style="font-size:11px;color:var(--text-light)">暂无</div>'}</div>
+        </div>
+      </div>
+      ${d.top_tags.length?`<div class="dash-chart-container"><div class="dash-chart-title">🏷️ 热门标签</div><div class="tag-cloud">${d.top_tags.map(t=>`<span class="tag-item">${t.tag} (${t.count})</span>`).join('')}</div></div>`:''}
+    `;
+  }catch(e){container.innerHTML='<div class="empty-state"><div class="icon">📊</div><p>加载失败</p></div>'}
+}
+function renderChart(title,data){
+  if(!data||!data.length)return '';
+  const maxVal=Math.max(...data.map(d=>d.count),1);
+  return `<div class="dash-chart-container"><div class="dash-chart-title">${title}</div>
+    <div class="bar-chart">${data.map(d=>`<div class="bar-item"><div class="bar-value">${d.count}</div><div class="bar-fill" style="height:${Math.max(d.count/maxVal*80,4)}px"></div><div class="bar-label">${d.date}</div></div>`).join('')}</div></div>`;
+}
+
+// ===== VIEW MEMBER ENHANCED (add bookmark + DM button) =====
+const _origViewMember=viewMember;
+viewMember=async function(mid){
+  await _origViewMember(mid);
+  // Add bookmark + DM buttons to the modal
+  const sheet=document.getElementById('resourceModal').querySelector('.modal-sheet');
+  const btns=document.createElement('div');
+  btns.style.cssText='display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)';
+  btns.innerHTML=`<button class="btn btn-outline btn-sm" onclick="addBookmark('member',null,${mid})" style="flex:1">⭐ 收藏</button><button class="btn btn-primary btn-sm" onclick="document.getElementById('resourceModal').style.display='none';openChat(${mid},'')" style="flex:1">💬 发私信</button>`;
+  sheet.appendChild(btns);
+}
+</script>
+</body>
+</html>
