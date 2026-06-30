@@ -921,7 +921,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
       processInviteLink(ig,ic);
     }
   }
-  else if(activeGroupId){await loadGroupContext();if(!registrationCompleted){switchTab('chat')}else{switchTab('pool')}}
+  else if(activeGroupId){await loadGroupContext();if(!registrationCompleted){switchTab('chat')}else{switchTab('discovery')}}
   else{document.getElementById('tabBar').style.display='flex';switchTab('discovery')}
 });
 
